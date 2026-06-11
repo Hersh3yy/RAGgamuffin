@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RAGgamuffin — Documentation</title>
+<style>
+  :root {
+    --bg: #f7f7f5;
+    --card: #ffffff;
+    --ink: #1f2328;
+    --muted: #57606a;
+    --accent: #6b4fbb;
+    --accent-soft: #efeaff;
+    --border: #e3e3df;
+    --code-bg: #f0f0ee;
+    --ok: #2da44e;
+    --warn: #bf8700;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.65;
+  }
+  header {
+    background: linear-gradient(135deg, #2d2440, #6b4fbb);
+    color: #fff;
+    padding: 48px 24px 40px;
+    text-align: center;
+  }
+  header h1 { margin: 0 0 8px; font-size: 2.2rem; letter-spacing: -0.5px; }
+  header p { margin: 0 auto; max-width: 640px; opacity: 0.85; }
+  nav {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 16px;
+    text-align: center;
+  }
+  nav a {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin: 0 10px;
+    white-space: nowrap;
+  }
+  nav a:hover { color: var(--accent); }
+  main { max-width: 920px; margin: 0 auto; padding: 24px 20px 80px; }
+  section { margin-top: 48px; }
+  h2 {
+    font-size: 1.5rem;
+    border-bottom: 2px solid var(--accent-soft);
+    padding-bottom: 8px;
+    letter-spacing: -0.3px;
+  }
+  h3 { font-size: 1.1rem; margin-top: 28px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin: 16px 0;
+  }
+  .diagram {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    margin: 16px 0;
+    overflow-x: auto;
+    text-align: center;
+  }
+  .diagram-caption {
+    font-size: 0.82rem;
+    color: var(--muted);
+    text-align: center;
+    margin-top: -8px;
+    margin-bottom: 24px;
+  }
+  code {
+    background: var(--code-bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.88em;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  pre.codeblock {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-size: 0.85rem;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  table { border-collapse: collapse; width: 100%; margin: 16px 0; background: var(--card); }
+  th, td { border: 1px solid var(--border); padding: 10px 14px; text-align: left; font-size: 0.9rem; }
+  th { background: var(--accent-soft); }
+  .pill {
+    display: inline-block;
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-radius: 999px;
+    padding: 1px 10px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    margin-right: 6px;
+  }
+  .good { color: var(--ok); font-weight: 600; }
+  .bad { color: #c0392b; font-weight: 600; }
+  .checklist li { margin: 8px 0; }
+  footer { text-align: center; color: var(--muted); font-size: 0.8rem; padding: 24px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>RAGgamuffin</h1>
+  <p>A local-first, multi-agent assembly line that turns messy coding notes into a clean, structured Obsidian knowledge base. Everything runs on your machine. No data leaves it.</p>
+</header>
+
+<nav>
+  <a href="#what">What is this</a>
+  <a href="#how">How it works</a>
+  <a href="#wiki">Wiki loop</a>
+  <a href="#userflow">User flow</a>
+  <a href="#obsidian">Obsidian guide</a>
+  <a href="#msty">Msty setup</a>
+  <a href="#logging">Logging</a>
+  <a href="#faq">FAQ</a>
+  <a href="claw-guide.html">Claw guide</a>
+</nav>
+
+<main>
+
+<!-- ============================================================ -->
+<section id="what">
+  <h2>What is this?</h2>
+  <div class="card">
+    <p>You write rough notes while coding — half sentences, pasted snippets, "remember this gotcha". They pile up and become useless. RAGgamuffin fixes that:</p>
+    <p>You drop a raw note into a folder. Local AI agents (running via llama.cpp inside Msty Claw) take turns improving it. A finished, structured document appears in your Obsidian vault, with business logic up top, Dutch prose checked, technical code tucked into collapsible toggles, key concepts linked together, and diagrams where they help.</p>
+    <p><strong>Local-first means private.</strong> The models run on your own machine. Company code in your notes never touches a cloud API.</p>
+  </div>
+
+  <pre class="mermaid">
+flowchart LR
+    you(("You")) -->|"drop messy note"| inbox["01_unprocessed"]
+    inbox --> pipeline["Per-note pipeline"]
+    pipeline -->|"wiki doc"| kb["02_wiki"]
+    pipeline -->|"raw original"| archive["03_meta/archive"]
+    kb --> obsidian["Browse in Obsidian"]
+    kb -.->|"later"| cursor["Cursor via MCP"]
+    pipeline -->|"gaps and questions"| meta["03_meta backlog"]
+  </pre>
+  <p class="diagram-caption">One folder in, three out: wiki doc, archived raw note, backlog entries.</p>
+</section>
+
+<!-- ============================================================ -->
+<section id="how">
+  <h2>How it works: the assembly line</h2>
+
+  <table>
+    <tr><th>Agent</th><th>Role</th><th>What it does</th><th>What it must NOT do</th></tr>
+    <tr><td><span class="pill">1</span>Verifier</td><td>Fact-checker</td><td>Compares your prose claims against the code in the note; flags contradictions with warning callouts</td><td>Never silently fixes anything</td></tr>
+    <tr><td><span class="pill">2</span>Structurer</td><td>Editor</td><td>Business logic first, code hidden in collapsible toggles, key concepts wiki-linked, optional Dutch/English protocol</td><td>Never changes code content</td></tr>
+    <tr><td><span class="pill">3</span>Visualizer</td><td>Illustrator</td><td>Inserts Mermaid flowcharts and sequence diagrams where they clarify</td><td>Never rewords a single sentence</td></tr>
+    <tr><td><span class="pill">4</span>Critic</td><td>Quality gate</td><td>Repairs mechanical formatting defects, writes the final file, reports knowledge gaps to the backlog</td><td>Never touches meaning or code</td></tr>
+    <tr><td><span class="pill">5</span>Curator</td><td>Wiki gardener (scheduled)</td><td>Audits one document at a time: adds missing wiki links, reports missing documents and reader questions</td><td>Never changes anything except adding links</td></tr>
+    <tr><td><span class="pill">6</span>Consultant</td><td>Ticket triage (interactive)</td><td>You paste a ticket; it proposes a plan grounded in the knowledge base and lists what info is missing</td><td>Never presents a guess as knowledge</td></tr>
+    <tr><td><span class="pill">8</span>Sentinel</td><td>Code watcher (weekly)</td><td>Compares git commits since last check against the KB; writes a changelog and flags stale documents</td><td>Never pastes code diffs or secrets into logs</td></tr>
+  </table>
+  <p class="diagram-caption">Agents 1-4 are the lean per-note hot path. Agents 5 and 8 run on a schedule. Agent 6 is interactive.</p>
+
+  <pre class="mermaid">
+sequenceDiagram
+    participant W as Watcher
+    participant A1 as Agent1_Verifier
+    participant A2 as Agent2_Structurer
+    participant A3 as Agent3_Visualizer
+    participant A4 as Agent4_Critic
+    participant V as Vault
+    W->>A1: raw note text
+    A1->>A2: note plus VERIFY flags
+    A2->>A3: structured document
+    A3->>A4: document plus diagrams
+    A4->>V: write final doc to 02_wiki
+    A4->>V: append gaps to backlog
+    A4->>V: append run entry to daily log
+  </pre>
+  <p class="diagram-caption">One pipeline run, from raw note to finished document. Each agent only sees the previous agent's output.</p>
+
+  <h3>Why a chain of small agents instead of one big prompt?</h3>
+  <div class="card">
+    <p>Small local models (4B-class Gemma/Qwen) do one job well and many jobs badly. Splitting the work means each agent gets a short, strict instruction set and a small context. It also means failures are isolated: if diagrams break, you re-run Agent 3, not the whole thing.</p>
+  </div>
+
+  <h3>What a finished document looks like</h3>
+  <pre class="mermaid">
+flowchart TD
+    title["H1 Title"] --> samenvatting["Samenvatting - business summary, no code"]
+    samenvatting --> kern["Kernconcepten - linked core concepts"]
+    kern --> sections["Topic sections - explanation first"]
+    sections --> toggle["Collapsible toggle - code hidden inside"]
+    sections --> diagram["Mermaid diagram"]
+    sections --> vragen["Open Vragen - unresolved flags"]
+  </pre>
+  <p class="diagram-caption">Document anatomy: skim the top, expand toggles only when you need the code.</p>
+</section>
+
+<!-- ============================================================ -->
+<section id="wiki">
+  <h2>The wiki loop: Curator and Consultant</h2>
+
+  <div class="card">
+    <p>Processing notes one by one gives you good <em>documents</em>. Two more agents turn those documents into a <em>wiki</em> — an interlinked, self-improving knowledge network.</p>
+  </div>
+
+  <h3>The Curator (Agent 5) — scheduled gardening</h3>
+  <p>On a schedule (weekly) or on demand, the Curator picks one wiki document and audits it against the entire knowledge base index:</p>
+  <ul>
+    <li><strong>Adds missing links:</strong> if a document mentions a concept that another document covers, but doesn't link it, the Curator inserts the <code>[[link]]</code>. The graph gets denser over time, automatically.</li>
+    <li><strong>Finds promised-but-missing documents:</strong> links pointing at documents that don't exist become <code>#missing-doc</code> backlog entries — your writing TODO list.</li>
+    <li><strong>Asks reader questions:</strong> things a reader would wonder after this document that nothing in the base answers become <code>#open-question</code> entries. Answer them yourself or hand them to another LLM, then drop the answer into the inbox as a new note.</li>
+  </ul>
+
+  <pre class="mermaid">
+flowchart TD
+    schedule["Weekly task or manual run"] --> pick["Curator picks one document"]
+    pick --> audit["Audit against index of all titles"]
+    audit --> links["Insert missing wiki links"]
+    audit --> gaps["Report missing documents"]
+    audit --> questions["Raise reader questions"]
+    gaps --> backlog["Backlog"]
+    questions --> backlog
+    backlog --> you(("You answer or research"))
+    you --> newNote["New raw note in inbox"]
+    newNote --> pipeline["Pipeline processes it"]
+    pipeline --> denser["Knowledge base grows and interlinks"]
+    denser --> pick
+  </pre>
+  <p class="diagram-caption">The self-improving loop: every audit produces either better linking or new writing prompts. The wiki literally tells you what to write next.</p>
+
+  <h3>The Consultant (Agent 6) — paste a ticket, get a grounded plan</h3>
+  <p>An interactive skill, not a pipeline stage. Open a chat with it in Msty (with a Knowledge Stack built from <code>02_wiki/</code> attached), paste a ticket or task, and it answers in a fixed format:</p>
+  <ol>
+    <li><strong>Wat ik begrijp</strong> — its interpretation of the ticket</li>
+    <li><strong>Voorgestelde aanpak</strong> — a concrete plan, citing the knowledge base documents it used</li>
+    <li><strong>Aannames</strong> — every assumption it had to make, explicitly</li>
+    <li><strong>Ontbrekende informatie</strong> — what's missing and who can answer it; structural gaps become <code>#ticket-gap</code> backlog entries</li>
+  </ol>
+
+  <pre class="mermaid">
+flowchart LR
+    ticket["You paste a ticket"] --> consultant["Consultant skill"]
+    kb["Knowledge Stack from 02_wiki"] --> consultant
+    consultant --> plan["Grounded plan of attack"]
+    consultant --> missing["Explicit missing-info list"]
+    missing --> backlog["Ticket gaps to backlog"]
+    backlog --> improve["Knowledge base improves where reality demanded it"]
+  </pre>
+  <p class="diagram-caption">Real tickets expose the most valuable gaps: knowledge you actually needed and didn't have.</p>
+
+  <div class="card">
+    <p><strong>Same trick inside Cursor:</strong> with the filesystem MCP server pointed at <code>02_wiki/</code> (see README), paste the ticket into Cursor chat and tell it to consult the knowledge base before answering and to list missing information explicitly. Your KB becomes IDE context.</p>
+  </div>
+
+  <h3>The Sentinel (Agent 8) — weekly code diff check</h3>
+  <p>The codebase moves; the knowledge base can go stale. Once a week the Sentinel compares git history on your work repo against the last commit it checked, writes a changelog, and flags KB documents that likely need updating.</p>
+
+  <pre class="mermaid">
+flowchart TD
+    weekly["Weekly scheduled task"] --> state["Read last_commit from sentinel-state"]
+    state --> git["Git log and diff since last commit"]
+    git --> sentinel["Sentinel matches changes to KB titles"]
+    sentinel --> changelog["Write changelog to 03_meta/changelogs"]
+    sentinel --> stale["Flag stale docs on backlog"]
+    sentinel --> update["Update last_commit in state"]
+    stale --> you(("You update raw note"))
+    you --> inbox["Drop back in 01_unprocessed"]
+    inbox --> fresh["Pipeline re-processes doc"]
+  </pre>
+  <p class="diagram-caption">The KB stays tied to the code. Stale-doc backlog entries tell you exactly what to refresh.</p>
+
+  <p>Setup: copy <code>sentinel-state.template.md</code> to <code>sentinel-state.md</code>, point <code>code_repo</code> at your Laravel/project repo (not RAGgamuffin itself), add that repo to Claw Allowed Folders as read-only. Full steps in <code>claw/playbook.md</code> section 11.</p>
+</section>
+
+<!-- ============================================================ -->
+<section id="userflow">
+  <h2>User flow (UX)</h2>
+
+  <div class="card">
+    <p><strong>The short version:</strong> the system is a queue, not a loop. It drains <code>01_unprocessed</code> one file at a time and then goes idle. It never reprocesses on its own — a file is touched exactly once, then archived. You "nudge" a re-analysis by putting a file back in the inbox.</p>
+  </div>
+
+  <pre class="mermaid">
+flowchart TD
+    drop["You drop note in 01_unprocessed"] --> trigger["Watcher fires"]
+    trigger --> run["Pipeline processes ONE file"]
+    run --> out["Document appears in 02_wiki"]
+    run --> archive["Raw note moved to 03_meta archive"]
+    out --> more{"More files in inbox?"}
+    more -->|"yes"| run
+    more -->|"no"| idle["System idles - zero CPU"]
+    idle -.->|"new file later"| trigger
+  </pre>
+  <p class="diagram-caption">The queue drains, then sleeps. No endless processing, no surprise CPU usage.</p>
+
+  <h3>A file's life</h3>
+  <pre class="mermaid">
+flowchart LR
+    raw["Raw note"] --> queued["Waiting in 01_unprocessed"]
+    queued --> processing["Being processed"]
+    processing --> done["Final doc in 02_wiki"]
+    processing --> archived["Original archived in 03_meta"]
+    done -->|"you want changes"| nudge["Copy archived note back to inbox"]
+    nudge --> queued
+  </pre>
+  <p class="diagram-caption">Re-analysis is a deliberate human action: copy the archived original back into the inbox. The new output overwrites the old document.</p>
+
+  <h3>Your daily rhythm</h3>
+  <ol>
+    <li><strong>While coding:</strong> jot rough notes, paste the relevant snippets, save as <code>.md</code> into <code>vault/01_unprocessed/</code>. Don't polish — that's the machine's job. One topic per note.</li>
+    <li><strong>Whenever:</strong> the pipeline picks each note up, one at a time. You don't wait for it.</li>
+    <li><strong>When you need knowledge:</strong> open Obsidian, search or click through links.</li>
+    <li><strong>Weekly-ish:</strong> skim <code>03_meta/backlog.md</code>. It lists what the Critic flagged: contradictions, missing explanations, open questions. Fix the worst ones by editing the archived raw note and dropping it back in the inbox.</li>
+  </ol>
+
+  <h3>How do I nudge a re-analysis?</h3>
+  <table>
+    <tr><th>Situation</th><th>What you do</th></tr>
+    <tr><td>I added more info to a topic</td><td>Edit the archived raw note (in <code>03_meta/archive/</code>), copy it into <code>01_unprocessed/</code>. The pipeline re-runs and overwrites the old document.</td></tr>
+    <tr><td>The output is badly formatted</td><td>Re-run the playbook manually in Claw on that file, or chat with the failing agent's skill directly in Claw with the document as input.</td></tr>
+    <tr><td>I want to merge two notes</td><td>Combine the raw notes into one file yourself, drop it in the inbox, delete the two old documents from <code>02_wiki/</code>.</td></tr>
+    <tr><td>Nothing is happening</td><td>Check the daily log (see Logging). If empty, the watcher task isn't running — open Claw and run the playbook manually.</td></tr>
+  </table>
+</section>
+
+<!-- ============================================================ -->
+<section id="obsidian">
+  <h2>Obsidian for rookies (and non-technical users)</h2>
+
+  <div class="card">
+    <p>Obsidian is just a viewer/editor for a folder of markdown files. The folder is called a <strong>vault</strong>. In this project, the vault is the repo's <code>vault/</code> folder: open Obsidian, choose <em>"Open folder as vault"</em>, and point it there. That's the entire setup.</p>
+  </div>
+
+  <h3>The four things a reader actually needs</h3>
+  <table>
+    <tr><th>Action</th><th>How</th><th>What it gives you</th></tr>
+    <tr><td>Search everything</td><td><code>Cmd/Ctrl + Shift + F</code></td><td>Full-text search across all processed notes — the number one lookup tool</td></tr>
+    <tr><td>Open a note fast</td><td><code>Cmd/Ctrl + O</code></td><td>Type part of a title, hit Enter</td></tr>
+    <tr><td>Follow connections</td><td>Click any <code>[[linked concept]]</code></td><td>Jump between related topics like a private Wikipedia</td></tr>
+    <tr><td>See the map</td><td>Graph view (icon in the left sidebar)</td><td>A visual map of how all concepts connect — great for spotting clusters and orphans</td></tr>
+  </table>
+
+  <pre class="mermaid">
+flowchart TD
+    q["I have a question"] --> s{"Do I know the topic name?"}
+    s -->|"yes"| quick["Quick open - Cmd O"]
+    s -->|"no"| search["Global search - Cmd Shift F"]
+    quick --> read["Read the Samenvatting"]
+    search --> read
+    read --> enough{"Enough detail?"}
+    enough -->|"yes"| doneNode["Done"]
+    enough -->|"need code"| toggle["Expand the Technical Implementation toggle"]
+    enough -->|"related topic"| link["Click a linked concept"]
+    link --> read
+  </pre>
+  <p class="diagram-caption">Lookup flow for a reader. The documents are designed so non-technical readers stop at the summary, and developers expand the toggles.</p>
+
+  <h3>Why the documents are shaped this way</h3>
+  <ul>
+    <li><strong>Business summary first:</strong> a non-technical colleague reads the top of any note and understands what the thing does and why (optionally in Dutch with English translations).</li>
+    <li><strong>Code in collapsed toggles:</strong> readers are never assaulted by a wall of code; developers click once to expand.</li>
+    <li><strong>Wiki links:</strong> concepts like <code>[[Voorraadbeheer]]</code> connect notes automatically. The more notes you process, the more valuable the graph becomes.</li>
+    <li><strong>Diagrams render natively:</strong> Obsidian draws Mermaid blocks as real diagrams, no plugins needed.</li>
+  </ul>
+
+  <div class="card">
+    <p><strong>Rookie warnings:</strong> don't edit files in <code>02_wiki/</code> by hand if you ever plan to re-run that note — the pipeline overwrites them. Edit the archived raw note in <code>03_meta/archive/</code> instead. Don't rename wiki files; links point at filenames.</p>
+  </div>
+
+  <h3>Chatting with your vault — offline, on a plane</h3>
+  <p>You do not need the internet to ask questions of the knowledge base. Two routes, both fully local:</p>
+  <table>
+    <tr><th>Route</th><th>How</th><th>Best for</th></tr>
+    <tr><td><strong>Msty Knowledge Stack</strong></td><td>In Msty: Knowledge Stacks &rarr; new stack pointed at <code>&lt;REPO&gt;/vault/02_wiki/</code>. Open a chat, pick your heavy local model, attach the stack, ask away. This is exactly what the Consultant (Agent 6) uses.</td><td>Staying in the Msty ecosystem; ticket triage</td></tr>
+    <tr><td><strong>Obsidian plugin</strong></td><td>Install the <em>Smart Connections</em> or <em>Text Generator</em> community plugin. Point its endpoint at the local llama.cpp server Msty already runs (e.g. <code>http://localhost:8080</code>). You get a chat sidebar next to your notes.</td><td>Never leaving the Obsidian window</td></tr>
+  </table>
+  <p>Both are 100% offline once the model is downloaded — same as running your DAW with no internet. Re-point/re-sync the Knowledge Stack as the vault grows.</p>
+</section>
+
+<!-- ============================================================ -->
+<section id="msty">
+  <h2>Msty setup: your personal checklist</h2>
+  <p>Full detail lives in <code>claw/playbook.md</code> in the repo. This is the condensed human checklist — do these in order, on each machine.</p>
+
+  <pre class="mermaid">
+flowchart LR
+    p1["1 Providers - models selectable"] --> p2["2 Bot - workspace vault, local only"]
+    p2 --> p3["3 Security - allow vault folder only, network strict"]
+    p3 --> p4["4 Skills - paste 4 prompts"]
+    p4 --> p5["5 Playbook - chain the skills"]
+    p5 --> p6["6 Manual test runs"]
+    p6 --> p7["7 Enable watcher"]
+  </pre>
+  <p class="diagram-caption">Setup order matters: security before skills, manual runs before automation.</p>
+
+  <ol class="checklist">
+    <li><strong>Providers:</strong> Settings &gt; Providers — confirm your llama.cpp models (Gemma/Qwen) appear. Give your strongest model to Agent 1.</li>
+    <li><strong>Bot:</strong> Settings &gt; Bots — one bot. Workspace = Project folder pointed at <code>&lt;REPO&gt;/vault</code>. Runtime = Host. Routing = Local only.</li>
+    <li><strong>Security:</strong> Settings &gt; Security — Allowed Folders: only <code>&lt;REPO&gt;/vault</code> (read/write). Network Guard: Strict. Approvals: on. Do this <em>before</em> the first run, especially at work.</li>
+    <li><strong>Skills:</strong> Settings &gt; Agent Mode &gt; Skills Studio — create folder <code>kb-pipeline</code>, create 7 skills (verifier, structurer, visualizer, critic, curator, consultant, sentinel), paste each prompt from the repo's <code>agents/</code> files. System prompt mode: Replace.</li>
+    <li><strong>Playbook:</strong> create <code>kb-process-note</code> — agents 1, 2, 3, 4 in sequence (see <code>claw/playbook.md</code> section 5).</li>
+    <li><strong>Test manually:</strong> drop ONE sample note in the inbox, run the playbook by hand, open the result in Obsidian. Check: toggles collapse, diagrams render, links work. Repeat 2-3 times with different notes.</li>
+    <li><strong>Automate:</strong> only when step 6 is reliably clean, create the watcher task on <code>01_unprocessed/</code> (or a 15-minute scheduled run, which is often more robust than a file watcher).</li>
+  </ol>
+</section>
+
+<!-- ============================================================ -->
+<section id="logging">
+  <h2>Logging</h2>
+
+  <div class="card">
+    <p><strong>Principle: log metadata, never content.</strong> The logs answer "did the system work, on what, and how well" — without duplicating your notes (which may contain sensitive code) into yet another file.</p>
+  </div>
+
+  <h3>Where and what</h3>
+  <p>One file per day: <code>vault/03_meta/logs/2026-06-11.md</code>. One short block per pipeline run, appended by the playbook:</p>
+
+  <pre class="codeblock">## 14:32 — stock-sync-debounce.md
+- result: success
+- output: 02_wiki/stock-sync-debounce.md
+- agents: verifier ok | structurer ok | visualizer ok | critic ok
+- backlog: +2 entries
+- duration: ~4 min
+- source: archived</pre>
+
+  <pre class="mermaid">
+flowchart TD
+    run["Pipeline run finishes"] --> entry["Append entry to today's log file"]
+    entry --> q{"Was there an error?"}
+    q -->|"no"| brief["One short block - metadata only"]
+    q -->|"yes"| verbose["Add error detail - which agent, what failed, what to do"]
+    logs["03_meta/logs/"] --> review["You skim during backlog review"]
+    brief --> logs
+    verbose --> logs
+  </pre>
+  <p class="diagram-caption">Quiet on success, loud on failure — the golden rule of pipeline logging.</p>
+
+  <h3>Calibration: too much vs. too little</h3>
+  <table>
+    <tr><th></th><th>Examples</th><th>Why</th></tr>
+    <tr><td class="bad">Too much</td><td>Full agent inputs/outputs, full prompts, the note's content, per-token traces</td><td>Duplicates sensitive content, bloats the vault, nobody reads it; Claw's own activity view already has run details when you need forensics</td></tr>
+    <tr><td class="good">Right</td><td>Timestamp, filename, per-agent ok/repaired/failed, diagram and flag counts, backlog delta, duration</td><td>Enough to spot trends ("visualizer fails on long notes") and audit what ran without exposing content</td></tr>
+    <tr><td class="bad">Too little</td><td>Just "ran 3 files today"</td><td>Useless when something silently breaks; you can't tell which file or which agent</td></tr>
+  </table>
+
+  <h3>Best practices baked into this design</h3>
+  <ul>
+    <li><strong>Append-only, daily rotation:</strong> never edit old entries; one file per day keeps files small and greppable.</li>
+    <li><strong>Errors are verbose, successes are terse:</strong> a failure entry should say which agent, what broke, and what to do.</li>
+    <li><strong>Logs are local-only:</strong> the <code>.gitignore</code> excludes <code>03_meta/</code> contents (except the backlog template), so logs never get committed.</li>
+    <li><strong>Logs are markdown in the vault:</strong> searchable from inside Obsidian itself with the same search you already use.</li>
+    <li><strong>Retention:</strong> delete log files older than ~3 months whenever you notice them; nothing depends on them.</li>
+  </ul>
+</section>
+
+<!-- ============================================================ -->
+<section id="faq">
+  <h2>FAQ</h2>
+  <table>
+    <tr><th>Question</th><th>Answer</th></tr>
+    <tr><td>Does it endlessly process the unprocessed folder?</td><td>No. It processes one file per run, drains the queue, then idles. Files are archived after processing so they're never picked up twice.</td></tr>
+    <tr><td>Can I re-analyze a note?</td><td>Yes — copy the archived raw note from <code>03_meta/archive/</code> back into <code>01_unprocessed/</code>. The new output overwrites the old document.</td></tr>
+    <tr><td>What if a document comes out broken?</td><td>Check the daily log to see which agent misbehaved, then either re-run the playbook on that file or paste the document into a chat with that agent's skill in Claw.</td></tr>
+    <tr><td>Is my company code safe?</td><td>Models run locally via llama.cpp; Network Guard is set to Strict; vault note contents are gitignored. Nothing leaves the machine unless you push it somewhere yourself.</td></tr>
+    <tr><td>How does Cursor use this later?</td><td>A filesystem MCP server pointed at <code>02_wiki/</code> gives Cursor read access to the curated knowledge. Config snippet is in the README.</td></tr>
+    <tr><td>Why is half the document in Dutch?</td><td>By design: business concepts in Dutch (with English translations on first use) for non-technical colleagues; technical terms stay in English for developers.</td></tr>
+    <tr><td>How does the wiki get more interlinked over time?</td><td>The Curator (Agent 5) audits documents on a schedule, inserts missing links, and puts missing documents and open questions on the backlog. See "Wiki loop".</td></tr>
+    <tr><td>Can I paste a work ticket and get help?</td><td>Yes — the Consultant (Agent 6) skill. It proposes a plan grounded in the knowledge base and explicitly lists what it doesn't know. Works in Msty chat, or in Cursor via the MCP server.</td></tr>
+    <tr><td>How does the KB stay current when code changes?</td><td>The Sentinel (Agent 8) runs weekly, compares git commits since its last check, writes a changelog, and flags stale documents with <code>#stale-doc</code> on the backlog. You update the raw note and re-process.</td></tr>
+    <tr><td>Who checks the Dutch?</td><td>The Structurer (Agent 2) owns the optional Dutch/English protocol. It is a clearly-marked, removable block in that prompt — delete it for English-only docs in phase 1, keep it if you want bilingual business prose.</td></tr>
+    <tr><td>Why markdown + Obsidian instead of HTML pages?</td><td>Markdown is the format the agents, RAG, and MCP all consume natively; Obsidian provides search, backlinks, and graph view for free. HTML can always be GENERATED from the markdown later (static site export) — the reverse direction is painful. Markdown stays the source of truth.</td></tr>
+  </table>
+</section>
+
+</main>
+
+<footer>RAGgamuffin — local-first knowledge pipeline. This file is self-contained; diagrams render via Mermaid (CDN).</footer>
+
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "strict" });
+</script>
+
+</body>
+</html>

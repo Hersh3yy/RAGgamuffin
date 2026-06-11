@@ -1,0 +1,34 @@
+# ============================================================
+# RAGgamuffin privacy model:
+#   - The PIPELINE (prompts, docs, config) is committed.
+#   - The KNOWLEDGE (vault note contents) is NOT committed.
+# ============================================================
+
+# Vault note contents stay local (privacy: may contain company code/notes).
+# Folder structure is preserved via .gitkeep files.
+vault/01_unprocessed/*
+!vault/01_unprocessed/.gitkeep
+vault/02_wiki/*
+!vault/02_wiki/.gitkeep
+vault/03_meta/archive/*
+!vault/03_meta/archive/.gitkeep
+
+# 03_meta: only the committed backlog template is tracked; everything else
+# (generated logs, scratch files) stays local.
+vault/03_meta/*
+!vault/03_meta/backlog.md
+!vault/03_meta/sentinel-state.template.md
+
+# Obsidian machine-specific state (workspace layout, cache, plugin data).
+# If you ever want to sync Obsidian *settings* across machines, selectively
+# un-ignore .obsidian/app.json etc. — never workspace.json.
+.obsidian/
+vault/.obsidian/
+
+# OS noise
+.DS_Store
+Thumbs.db
+
+# Msty Claw local artifacts (if it ever writes state into the workspace)
+.claw/
+*.log

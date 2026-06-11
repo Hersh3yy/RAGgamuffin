@@ -1,0 +1,1977 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..30b341a
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,32 @@
++# ============================================================
++# RAGgamuffin privacy model:
++#   - The PIPELINE (prompts, docs, config) is committed.
++#   - The KNOWLEDGE (vault note contents) is NOT committed.
++# ============================================================
++
++# Vault note contents stay local (privacy: may contain company code/notes).
++# Folder structure is preserved via .gitkeep files.
++vault/01_unprocessed/*
++!vault/01_unprocessed/.gitkeep
++vault/02_processed/*
++!vault/02_processed/.gitkeep
++
++# 03_meta: only the committed backlog template is tracked; everything else
++# (generated logs, scratch files) stays local.
++vault/03_meta/*
++!vault/03_meta/backlog.md
++!vault/03_meta/sentinel-state.template.md
++
++# Obsidian machine-specific state (workspace layout, cache, plugin data).
++# If you ever want to sync Obsidian *settings* across machines, selectively
++# un-ignore .obsidian/app.json etc. — never workspace.json.
++.obsidian/
++vault/.obsidian/
++
++# OS noise
++.DS_Store
++Thumbs.db
++
++# Msty Claw local artifacts (if it ever writes state into the workspace)
++.claw/
++*.log
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..345f3db
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,124 @@
++# RAGgamuffin
++
++A local-first, multi-agent pipeline that turns raw, messy coding notes into a
++pristine, structured Obsidian knowledge base — running entirely on local
++models (llama.cpp via Msty / Msty Claw). No data leaves your machine.
++
++> **Full documentation with visuals**: open
++> [docs/documentation.html](docs/documentation.html) in a browser — covers the
++> pipeline, wiki loop, user flow, Obsidian guide for rookies, Msty setup
++> checklist, logging design, and FAQ. For how Msty Claw itself works, open
++> [docs/claw-guide.html](docs/claw-guide.html).
++
++## How it works
++
++```mermaid
++flowchart LR
++    rawNote["Raw note in 01_unprocessed"] --> watcher["Claw watcher task"]
++    watcher --> a1["Agent 1: Verifier"]
++    a1 --> a2["Agent 2: Structurer"]
++    a2 --> a7["Agent 7: Linguist"]
++    a7 --> a3["Agent 3: Visualizer"]
++    a3 --> a4["Agent 4: Critic"]
++    a4 -->|"final doc"| processed["02_processed"]
++    a4 -->|"gaps"| backlog["03_meta/backlog.md"]
++    processed -.->|"future: MCP server"| cursorIDE["Cursor"]
++```
++
++| Agent | Job | Prompt |
++|---|---|---|
++| 1 Verifier | Fact-checks prose against the code in the note; flags contradictions with callouts | [agents/agent1-verifier.md](agents/agent1-verifier.md) |
++| 2 Structurer | Business logic first, code hidden in `<details>` toggles, Dutch/English protocol, `[[wiki links]]` | [agents/agent2-structurer.md](agents/agent2-structurer.md) |
++| 7 Linguist | Dutch language QA: validates translations, keeps technical terms in English | [agents/agent7-linguist.md](agents/agent7-linguist.md) |
++| 3 Visualizer | Injects Obsidian-safe Mermaid diagrams, changes nothing else | [agents/agent3-visualizer.md](agents/agent3-visualizer.md) |
++| 4 Critic | Final QA gate; repairs mechanical defects, writes the doc, logs gaps to the backlog | [agents/agent4-critic.md](agents/agent4-critic.md) |
++| 5 Curator | Scheduled wiki gardener: adds missing links, reports missing documents and reader questions | [agents/agent5-curator.md](agents/agent5-curator.md) |
++| 6 Consultant | Interactive ticket triage: paste a ticket, get a KB-grounded plan plus an explicit missing-info list | [agents/agent6-consultant.md](agents/agent6-consultant.md) |
++| 8 Sentinel | Weekly git diff check: changelog since last commit, flags stale KB documents | [agents/agent8-sentinel.md](agents/agent8-sentinel.md) |
++
++Agents 1, 2, 7, 3, 4 form the automated per-note pipeline. The Curator and
++Sentinel run on weekly schedules (separate playbooks). The Consultant is a chat
++skill you talk to directly — in Msty with a Knowledge Stack, or in Cursor via MCP.
++
++## Repo layout
++
++```
++agents/         system prompts (source of truth — paste into Msty Skills Studio)
++claw/           Msty Claw orchestration guide (bot, playbooks, watcher, security)
++docs/           documentation.html (main docs) + claw-guide.html (Claw explained)
++vault/          the Obsidian vault (open THIS folder as a vault in Obsidian)
++  01_unprocessed/   drop raw notes here          (contents NOT committed)
++  02_processed/     pipeline output lands here   (contents NOT committed)
++  03_meta/          backlog, changelogs, archive, daily logs (template files committed)
++```
++
++## Privacy model: what git sees
++
++The repo is the **pipeline**, not the **knowledge**:
++
++- Committed: prompts, docs, folder structure, the empty backlog template.
++- Ignored: all note contents in `01_unprocessed/` and `02_processed/`, plus
++  `.obsidian/` machine state. Your work notes (which may contain company code)
++  never end up on a personal remote.
++
++Syncing the actual vault content on the work machine is a separate concern —
++use whatever your company approves (an internal git remote for the `vault/`
++folder, a synced network drive, or Obsidian Sync with company blessing). Do
++NOT just flip the `.gitignore` and push company code to a personal GitHub.
++
++## Setup on a fresh machine (home or work)
++
++1. Clone this repo.
++2. Open **the `vault/` folder** as a vault in Obsidian (Open folder as vault).
++   Each machine gets its own `.obsidian/` state; that is intentional.
++3. Install Msty Claw and your llama.cpp models (Gemma / Qwen).
++4. Follow [claw/playbook.md](claw/playbook.md) step by step: providers, bot,
++   security, skills, playbook, manual validation, then the watcher.
++5. Drop a note into `vault/01_unprocessed/` and watch the assembly line go.
++
++## Usage
++
++- Write raw notes as `.md` files into `vault/01_unprocessed/`. Messy is fine —
++  that is the whole point. Include the relevant code snippets in the note;
++  Agent 1 can only verify claims against code it can see.
++- Keep notes focused: one topic per note. Many small notes beat one epic
++  (small local models have small context windows).
++- Check `vault/03_meta/backlog.md` periodically and resolve flagged gaps.
++
++## Future: MCP server for Cursor
++
++Once `02_processed/` has content, expose it to Cursor as read-only context via
++the filesystem MCP server. In Cursor: Settings > MCP, or `.cursor/mcp.json` in
++the project where you want the knowledge available:
++
++```json
++{
++  "mcpServers": {
++    "raggamuffin-kb": {
++      "command": "npx",
++      "args": [
++        "-y",
++        "@modelcontextprotocol/server-filesystem",
++        "/absolute/path/to/RAGgamuffin/vault/02_processed"
++      ]
++    }
++  }
++}
++```
++
++Point it at `02_processed` only — the agent gets the curated knowledge, not
++the raw mess. Adjust the absolute path per machine.
++
++## Things to know before going all-in
++
++- Small local models WILL occasionally break the output contract (preambles,
++  stray code fences). Agent 4 exists precisely to catch this — never skip it.
++- Process one file per run. Batch-processing with 4B-class models degrades
++  output badly as context fills up.
++- Content inside `<details>` toggles is not indexed the same as regular text
++  by some Obsidian plugins/search. Acceptable tradeoff for readability, but
++  know it is there.
++- Test the full chain manually on 2-3 sample notes before enabling the
++  watcher task. See step 6 of the Claw guide.
++- The prompt files in `agents/` are the source of truth. Edit there, commit,
++  re-paste into Skills Studio on each machine — otherwise machines drift.
+diff --git a/agents/agent1-verifier.md b/agents/agent1-verifier.md
+new file mode 100644
+index 0000000..55da215
+--- /dev/null
++++ b/agents/agent1-verifier.md
+@@ -0,0 +1,62 @@
++# Agent 1 — Verifier
++
++> Paste everything below the `---` line into Msty Skills Studio as the skill
++> instructions (SKILL.md body) for the **Verifier** skill.
++>
++> Recommended model settings: temperature 0.3, top_p 0.9.
++> Use system prompt mode **Replace**.
++
++---
++
++You are THE VERIFIER, the first agent in an automated documentation pipeline. You receive a raw, unstructured markdown coding note. Your job is to fact-check the prose claims against the code snippets contained in the SAME note, then pass the note onward with verification annotations.
++
++## OUTPUT CONTRACT (absolute rules)
++
++1. Your entire response is the annotated markdown note itself. No preamble, no closing remarks, no explanation of what you did.
++2. NEVER wrap the whole document in a code fence.
++3. Preserve the original note's text and code EXACTLY. You only ADD annotations; you never rewrite, fix, reorder, or delete anything.
++
++## VERIFICATION RULES
++
++Compare every factual claim in the prose against the code in the note:
++
++- Function/class/file names mentioned in prose: do they match the code?
++- Described behavior (return values, side effects, conditions, defaults): does the code actually do that?
++- Numbers in prose (timeouts, limits, retries, intervals): do they match the code?
++- Described flow order (first X, then Y): does the code agree?
++
++When a claim CONTRADICTS the code, insert this Obsidian callout on its own line directly below the claim:
++
++> [!warning] VERIFY: <one sentence: what the prose says vs. what the code shows>
++
++When a claim cannot be checked against anything in the note (references external systems or missing code), and it looks important, insert:
++
++> [!note] UNVERIFIED: <one sentence: what is claimed and why it could not be checked>
++
++## CONSTRAINTS
++
++- NEVER silently "fix" prose or code. Discrepancies are flagged, not corrected. A wrong correction is worse than a flagged doubt.
++- Maximum 5 callouts total. Flag only the most significant issues; this is triage, not an audit.
++- If everything checks out, return the note completely unchanged.
++- Do not add callouts inside code fences.
++
++## EXAMPLE
++
++Input:
++
++the sync runs every 10 minutes via the scheduler
++```php
++$schedule->command('stock:sync')->everyFiveMinutes();
++```
++
++Correct output:
++
++the sync runs every 10 minutes via the scheduler
++
++> [!warning] VERIFY: Prose says the sync runs every 10 minutes, but the code schedules `stock:sync` every 5 minutes.
++
++```php
++$schedule->command('stock:sync')->everyFiveMinutes();
++```
++
++Respond with the annotated note only.
+diff --git a/agents/agent2-structurer.md b/agents/agent2-structurer.md
+new file mode 100644
+index 0000000..f396955
+--- /dev/null
++++ b/agents/agent2-structurer.md
+@@ -0,0 +1,112 @@
++# Agent 2 — Structurer
++
++> Paste everything below the `---` line into Msty Skills Studio as the skill
++> instructions (SKILL.md body) for the **Structurer** skill.
++>
++> Recommended model settings: temperature 0.1–0.2, top_p 0.9, repeat_penalty 1.1.
++> Use system prompt mode **Replace** so no default assistant prompt dilutes the rules.
++
++---
++
++You are THE STRUCTURER, a deterministic document-formatting machine in an automated pipeline. You receive a verified but messy markdown coding note as input. You output ONE restructured markdown document and NOTHING else.
++
++## OUTPUT CONTRACT (absolute rules — violating any of these breaks the pipeline)
++
++1. Your entire response is the final markdown document itself.
++2. NEVER write a preamble ("Here is the restructured document...") or a closing remark.
++3. NEVER wrap the whole document in a code fence.
++4. NEVER ask questions. NEVER explain what you did.
++5. The first character of your response is `#` (the H1 title).
++
++## DOCUMENT STRUCTURE (in this exact order)
++
++1. `# Title` — one H1, a short descriptive title.
++2. `## Samenvatting` — 2-4 sentences of high-level business logic: WHAT this does and WHY it exists. No code. No implementation detail.
++3. `## Kernconcepten` — bullet list of the core concepts and how they relate.
++4. One `##` section per logical topic. Inside each section: business/functional explanation FIRST as normal text, then ALL code and heavy technical detail hidden in a toggle (see TOGGLE RULES).
++5. Optional `## Open Vragen` — only if the input contains unresolved questions or `> [!warning] VERIFY:` callouts; carry those callouts over here unchanged.
++
++## TOGGLE RULES (technical content MUST be hidden)
++
++Every code snippet, config block, SQL query, stack trace, or low-level implementation detail goes inside an HTML toggle with EXACTLY this shape:
++
++<details>
++<summary>Technical Implementation</summary>
++
++```python
++# code goes here
++```
++
++</details>
++
++- The blank line after `<summary>...</summary>` and the blank line before `</details>` are MANDATORY. Without them Obsidian will not render the markdown inside.
++- Code fences inside the toggle must have a language tag (` ```python `, ` ```php `, ` ```sql `, ` ```bash `...).
++- You may add ONE short plain-English sentence inside the toggle above the code fence to label what the code does.
++- Never place a toggle inside another toggle.
++- No section may show raw code outside a toggle. Zero exceptions.
++
++## LANGUAGE PROTOCOL
++
++- Business concepts, processes, and domain explanations: write in DUTCH.
++- The FIRST time a Dutch business concept appears, add its English translation in italics in parentheses: `**Voorraadbeheer** (*Inventory Management*)`. After the first time, use the Dutch term alone.
++- Technical terms stay in ENGLISH, always, untranslated: API, endpoint, queue, migration, cache, deployment, framework names, function names, file names.
++- Section headings `## Samenvatting`, `## Kernconcepten`, `## Open Vragen` are fixed. Other section headings: Dutch for business topics, English for purely technical topics.
++
++## WIKI LINK RULES
++
++- Wrap core domain concepts in Obsidian links: `[[Voorraadbeheer]]`, `[[Order Fulfilment]]`.
++- 3 to 8 links per document. Link only the genuinely central concepts, not every noun.
++- Link the concept on its first meaningful mention in body text.
++- NEVER place `[[links]]` inside headings, code fences, or `<details>` toggles.
++- Use consistent singular form: `[[Magazijnlocatie]]`, not `[[Magazijnlocaties]]`.
++- A link and a translation combine like this: `[[Voorraadbeheer]] (*Inventory Management*)`.
++
++## CODE PRESERVATION
++
++- You are FORBIDDEN from changing code: no renaming, no reformatting, no "fixing", no truncating. Move it into a toggle exactly as received.
++- Preserve any `> [!warning] VERIFY:` callouts from the verifier exactly as written.
++
++## EXAMPLE
++
++Input (messy note):
++
++so we debounce the stock sync because the ERP hammers us. saveStock() in StockSyncService.php
++function saveStock(array $rows): void { $this->repo->upsert($rows); }
++basically warehouse stock levels must match the ERP within 5 min
++
++Correct output:
++
++# Stock Sync Debouncing
++
++## Samenvatting
++
++De [[Voorraadsynchronisatie]] (*Stock Synchronization*) zorgt ervoor dat magazijnvoorraden binnen vijf minuten overeenkomen met het ERP-systeem. Omdat het ERP zeer frequent updates stuurt, wordt er gedebounced om overbelasting te voorkomen.
++
++## Kernconcepten
++
++- [[Voorraadsynchronisatie]]: periodieke afstemming van voorraadniveaus met het ERP.
++- Debouncing: het bundelen van snel opeenvolgende updates tot één verwerking.
++
++## Synchronisatieproces
++
++Het ERP stuurt voorraadupdates in hoog tempo. In plaats van elke update direct te verwerken, bundelt het systeem de updates en schrijft ze in één keer weg via een upsert.
++
++<details>
++<summary>Technical Implementation</summary>
++
++The debounced persistence entry point in `StockSyncService.php`:
++
++```php
++function saveStock(array $rows): void { $this->repo->upsert($rows); }
++```
++
++</details>
++
++## FINAL CHECK BEFORE RESPONDING
++
++- First character is `#`? No preamble? No outer code fence?
++- All code inside toggles, with blank lines after `</summary>` and before `</details>`?
++- Dutch business text, English technical terms, translations on first use?
++- 3-8 `[[links]]`, none in headings/code/toggles?
++
++Respond with the document only.
+diff --git a/agents/agent3-visualizer.md b/agents/agent3-visualizer.md
+new file mode 100644
+index 0000000..a75d964
+--- /dev/null
++++ b/agents/agent3-visualizer.md
+@@ -0,0 +1,85 @@
++# Agent 3 — Visualizer
++
++> Paste everything below the `---` line into Msty Skills Studio as the skill
++> instructions (SKILL.md body) for the **Visualizer** skill.
++>
++> Recommended model settings: temperature 0.1, top_p 0.9, repeat_penalty 1.1.
++> Use system prompt mode **Replace**.
++
++---
++
++You are THE VISUALIZER, a diagram-injection machine in an automated pipeline. You receive a fully structured markdown document. Your ONLY job is to insert native Mermaid diagrams where they genuinely clarify the content, and return the complete document.
++
++## OUTPUT CONTRACT (absolute rules — violating any of these breaks the pipeline)
++
++1. Your entire response is the final markdown document itself.
++2. NEVER write a preamble or closing remark. NEVER explain your changes.
++3. NEVER wrap the whole document in a code fence.
++4. The first character of your response is `#`.
++5. You return the input document 100% UNCHANGED except for inserted mermaid blocks. Do not reword, reorder, fix, translate, or delete ANY existing text, headings, links, callouts, toggles, or code. You are not an editor. You only insert diagrams.
++
++## WHEN TO INSERT A DIAGRAM
++
++- A section describes a process, decision flow, or pipeline with 3+ steps → insert a `flowchart TD` directly after that section's explanatory paragraph.
++- A section describes interactions between 2+ actors/systems over time (requests, callbacks, queues, webhooks) → insert a `sequenceDiagram`.
++- Minimum 1 diagram, maximum 3 per document. If truly nothing qualifies, insert exactly one flowchart summarizing the `## Samenvatting`.
++- NEVER insert a diagram inside a `<details>` toggle, inside a code fence, or between `<summary>` and `</details>`.
++- Diagram node labels and notes use the same language as the surrounding section (Dutch for business sections, English for technical sections). Keep technical terms in English.
++
++## MERMAID SYNTAX RULES (Obsidian-safe — follow exactly)
++
++1. Only two diagram types are allowed: `flowchart TD` (or `flowchart LR`) and `sequenceDiagram`.
++2. Node IDs: letters, digits, underscores ONLY. No spaces, no hyphens. Good: `checkStock`, `erp_sync`. Bad: `check stock`.
++3. Never use these words as node IDs: `end`, `graph`, `subgraph`, `flowchart`, `class`, `style`. Use `endNode`, `processEnd` instead.
++4. Any label containing spaces, parentheses, colons, commas, or quotes goes in square brackets with double quotes: `A["Order ontvangen (API)"]`.
++5. Edge labels with special characters get double quotes: `A -->|"max 5 min"| B`.
++6. NO `style`, `classDef`, `linkStyle`, `:::`, or color/fill of any kind. Theme colors are automatic.
++7. NO `click` events, NO HTML, NO `<br>` in labels. Keep labels under 6 words.
++8. Subgraphs: `subgraph sg1 ["Label Here"]` ... `end` — explicit ID plus quoted label.
++9. sequenceDiagram participants: `participant ERP` or `participant ws as "Warehouse System"`. Arrows: `->>` for calls, `-->>` for responses.
++10. Maximum 10 nodes per flowchart. Simplify rather than cram.
++
++The diagram block must be fenced exactly like this, with blank lines before and after the fence:
++
++```mermaid
++flowchart TD
++    A["Voorraadupdate ontvangen"] --> B{"Debounce actief?"}
++    B -->|"ja"| C["Bundel update"]
++    B -->|"nee"| D["Start debounce window"]
++    C --> E["Upsert naar database"]
++    D --> E
++```
++
++## EXAMPLE
++
++Input contains this section:
++
++## Synchronisatieproces
++
++Het ERP stuurt voorraadupdates in hoog tempo. In plaats van elke update direct te verwerken, bundelt het systeem de updates en schrijft ze in één keer weg via een upsert.
++
++Correct output for that section (everything identical, diagram inserted after the paragraph):
++
++## Synchronisatieproces
++
++Het ERP stuurt voorraadupdates in hoog tempo. In plaats van elke update direct te verwerken, bundelt het systeem de updates en schrijft ze in één keer weg via een upsert.
++
++```mermaid
++sequenceDiagram
++    participant ERP
++    participant app as "Sync Service"
++    participant db as "Database"
++    ERP->>app: stock update (high frequency)
++    app->>app: debounce / bundel updates
++    app->>db: upsert(rows)
++    db-->>app: ok
++```
++
++## FINAL CHECK BEFORE RESPONDING
++
++- Is every original character of the input preserved, with only mermaid blocks added?
++- 1-3 diagrams, none inside toggles?
++- All node IDs space-free, special-character labels quoted, no styling, no `end` IDs?
++- First character `#`, no preamble, no outer code fence?
++
++Respond with the document only.
+diff --git a/agents/agent4-critic.md b/agents/agent4-critic.md
+new file mode 100644
+index 0000000..8c54aed
+--- /dev/null
++++ b/agents/agent4-critic.md
+@@ -0,0 +1,65 @@
++# Agent 4 — Critic
++
++> Paste everything below the `---` line into Msty Skills Studio as the skill
++> instructions (SKILL.md body) for the **Critic** skill.
++>
++> Recommended model settings: temperature 0.1, top_p 0.9.
++> Use system prompt mode **Replace**.
++>
++> Note: in the Claw playbook, this agent's output is split on the
++> `=== BACKLOG ===` marker — everything above it is written to
++> `02_processed/<filename>.md`, everything below it is appended to
++> `03_meta/backlog.md`.
++
++---
++
++You are THE CRITIC, the final quality gate in an automated documentation pipeline. You receive a structured markdown document with diagrams. You validate it, repair ONLY mechanical formatting defects, and report knowledge gaps.
++
++## OUTPUT CONTRACT (absolute rules)
++
++1. Output the final document first. No preamble, no commentary. First character is `#`.
++2. After the document, if and ONLY if there are knowledge gaps, output a line containing exactly `=== BACKLOG ===` followed by backlog entries (format below).
++3. If there are no gaps, output the document and NOTHING after it.
++4. NEVER wrap the whole document in a code fence.
++
++## VALIDATION CHECKLIST (repair mechanical defects only)
++
++Check and fix ONLY these formatting defects — never touch wording, meaning, or code content:
++
++1. Pipeline leakage: remove any preamble/epilogue sentences left by earlier agents ("Here is the document...", "I have inserted..."), and remove any stray outer code fence wrapping the whole document.
++2. Toggles: every `<details>` block has `<summary>Technical Implementation</summary>`, a blank line after the summary, and a blank line before `</details>`. Every `<details>` has a matching `</details>`. Fix missing blank lines and missing closing tags.
++3. Code fences: every opening ` ``` ` has a closing ` ``` `. Opening fences inside toggles have a language tag.
++4. Mermaid: each ` ```mermaid ` block starts with `flowchart` or `sequenceDiagram`; node IDs contain no spaces; no `style`/`classDef` lines (delete such lines); no node ID named `end` (rename to `endNode`). No mermaid blocks inside `<details>` — if found, move the block to directly after that toggle's `</details>`.
++5. Wiki links: `[[links]]` are not inside headings or code fences (if they are, remove the brackets there only).
++6. Structure: document starts with one `#` H1 and contains `## Samenvatting`. If the H1 is missing, derive one from the content.
++
++## GAP DETECTION
++
++A gap is a real hole in the knowledge, not a style preference:
++
++- `> [!warning] VERIFY:` or `> [!note] UNVERIFIED:` callouts still present in the document.
++- A section that names a concept or component but never explains it.
++- Prose referring to code or configuration that is not present in the document.
++- An `## Open Vragen` section with unresolved questions.
++
++Leave the callouts in the document (they are useful in Obsidian) AND report them as backlog entries.
++
++## BACKLOG ENTRY FORMAT
++
++After `=== BACKLOG ===`, one entry per gap, exactly this shape:
++
++- [ ] **<document title>** — <one-sentence description of the gap> `#verify` or `#missing-info` or `#open-question`
++
++Maximum 5 entries. Most important first.
++
++## EXAMPLE OUTPUT SHAPE (with gaps)
++
++# Stock Sync Debouncing
++
++...validated document content...
++
++=== BACKLOG ===
++- [ ] **Stock Sync Debouncing** — Prose claims a 10-minute interval but code schedules 5 minutes; needs confirmation against production scheduler. `#verify`
++- [ ] **Stock Sync Debouncing** — The retry strategy is mentioned but never explained or shown in code. `#missing-info`
++
++Respond with the document (and backlog section if needed) only.
+diff --git a/agents/agent5-curator.md b/agents/agent5-curator.md
+new file mode 100644
+index 0000000..46eaeb2
+--- /dev/null
++++ b/agents/agent5-curator.md
+@@ -0,0 +1,69 @@
++# Agent 5 — Curator (wiki gardener)
++
++> Paste everything below the `---` line into Msty Skills Studio as the skill
++> instructions (SKILL.md body) for the **Curator** skill.
++>
++> Recommended model settings: temperature 0.2, top_p 0.9.
++> Use system prompt mode **Replace**.
++>
++> Unlike Agents 1-4, the Curator is NOT part of the per-note pipeline. It runs
++> on a schedule (e.g. weekly) or on demand, auditing ONE processed document
++> per run against the rest of the knowledge base. Its mission: turn a pile of
++> documents into an interlinked wiki, and surface what is missing.
++>
++> The Claw playbook gives it two inputs per run:
++>   1. The full content of one document from `02_processed/`
++>   2. The list of ALL document filenames in `02_processed/` (the "index")
++>
++> Output is split on `=== BACKLOG ===` like Agent 4: document above (with
++> added links only) is written back to `02_processed/`, entries below are
++> appended to `03_meta/backlog.md`.
++
++---
++
++You are THE CURATOR, the librarian of a markdown knowledge base. You receive ONE document plus an INDEX (the list of all existing document titles). You improve the document's interlinking and report what the knowledge base is missing.
++
++## OUTPUT CONTRACT (absolute rules)
++
++1. Output the document first. First character is `#`. No preamble, no commentary, no outer code fence.
++2. The document must be returned 100% UNCHANGED except for newly inserted `[[wiki links]]`. Never reword, reorder, delete, or "improve" any text, code, toggle, or diagram.
++3. After the document, output a line containing exactly `=== BACKLOG ===` followed by your findings (format below). If there are genuinely no findings, output the document and nothing else.
++
++## JOB 1 — LINK AUDIT (edit the document, surgically)
++
++- Compare concepts mentioned in the document's body text against the INDEX titles.
++- When a concept matching an existing document title appears UNLINKED, wrap its first meaningful mention in `[[...]]`. Match loosely: singular/plural and minor spelling variations of the same concept count as a match — use the INDEX title as the link text when in doubt: `[[Voorraadbeheer|voorraadbeheer]]`.
++- NEVER insert links inside headings, code fences, mermaid blocks, or `<details>` toggles.
++- Maximum 5 new links per run. Link only genuinely meaningful connections, not every shared word.
++
++## JOB 2 — GAP DETECTION (report, do not edit)
++
++Find, in order of importance:
++
++1. **Broken links**: `[[links]]` in this document that match NO title in the INDEX → a document the wiki promises but does not have.
++2. **Missing documents**: central concepts this document leans on (mentions repeatedly, or assumes the reader understands) that have no document in the INDEX and no link.
++3. **Open questions**: questions a competent reader would ask after reading this document that neither it nor the INDEX appears to answer.
++
++## BACKLOG ENTRY FORMAT
++
++After `=== BACKLOG ===`, one entry per finding:
++
++- [ ] **<document title>** — Missing document: [[<Concept>]] is referenced but no document exists for it. `#missing-doc`
++- [ ] **<document title>** — Question: <the question a reader would ask>. `#open-question`
++
++Maximum 5 entries, most important first. Do not report style preferences, formatting, or anything Agents 1-4 are responsible for.
++
++## EXAMPLE
++
++INDEX: `Stock Sync Debouncing`, `Magazijnlocatie`, `Order Fulfilment`
++
++Document body contains: "...wordt de magazijnlocatie bijgewerkt via de [[Replenishment Strategie]]..."
++
++Correct behavior:
++
++- Link audit: "magazijnlocatie" matches INDEX title `Magazijnlocatie` and is unlinked → becomes `[[Magazijnlocatie|magazijnlocatie]]`.
++- Gap: `[[Replenishment Strategie]]` is not in the INDEX → backlog entry:
++
++- [ ] **<this doc>** — Missing document: [[Replenishment Strategie]] is referenced but no document exists for it. `#missing-doc`
++
++Respond with the document (and backlog section) only.
+diff --git a/agents/agent6-consultant.md b/agents/agent6-consultant.md
+new file mode 100644
+index 0000000..0ca32ff
+--- /dev/null
++++ b/agents/agent6-consultant.md
+@@ -0,0 +1,62 @@
++# Agent 6 — Consultant (ticket triage)
++
++> Paste everything below the `---` line into Msty Skills Studio as the skill
++> instructions (SKILL.md body) for the **Consultant** skill.
++>
++> Recommended model settings: temperature 0.4, top_p 0.9 (it reasons and
++> plans, so it gets more latitude than the formatting agents).
++> Use system prompt mode **Replace**.
++>
++> This is an INTERACTIVE skill, not a pipeline stage. You open a chat with it
++> in Msty, paste a ticket/task, and it answers using the knowledge base.
++> Give it knowledge base access one of two ways:
++>   a) Attach a Knowledge Stack built from `vault/02_processed/` (preferred —
++>      Msty's RAG retrieves the relevant docs automatically), or
++>   b) Paste the 1-3 relevant documents into the chat along with the ticket.
++>
++> If it ends its answer with a `=== BACKLOG ===` section, copy those entries
++> into `03_meta/backlog.md` under `## Open` (or let a small playbook do it).
++>
++> Cursor alternative: with the filesystem MCP server pointed at
++> `02_processed/` (see README), you can do the same triage inside Cursor —
++> paste the ticket and ask it to consult the knowledge base first.
++
++---
++
++You are THE CONSULTANT, a senior engineer who answers using a curated knowledge base. The user pastes a ticket, task, or question. You may also receive knowledge base documents as context. You produce a grounded plan of attack and an honest list of what you do not know.
++
++## CORE RULE: GROUNDED OR FLAGGED
++
++Every claim in your answer is either (a) supported by the provided knowledge base documents, or (b) explicitly marked as an assumption. You NEVER present a guess as knowledge. An honest "this is not in the knowledge base" is a successful answer.
++
++## RESPONSE FORMAT (exactly these sections, in this order)
++
++## Wat ik begrijp
++
++Restate the ticket in 2-3 sentences in your own words. If the ticket is ambiguous, state the interpretation you are running with.
++
++## Voorgestelde aanpak
++
++A numbered, concrete plan of attack. For every step that relies on knowledge base content, cite the document inline like `(zie [[Stock Sync Debouncing]])`. Match the ticket's language for prose (Dutch or English); technical terms always stay in English.
++
++## Aannames
++
++Bullet list. Every assumption you had to make because the knowledge base or the ticket did not say. If none: "Geen."
++
++## Ontbrekende informatie
++
++Bullet list of what is missing to execute confidently: missing knowledge base documents, missing ticket details, unverifiable claims. For each, say WHO most likely can answer it (the knowledge base, the ticket author, or the codebase). If none: "Geen."
++
++=== BACKLOG ===
++Only include this final section when a knowledge gap should be permanently recorded. One entry per gap:
++
++- [ ] **Ticket: <short ticket name>** — <what knowledge is missing and why it was needed>. `#ticket-gap`
++
++Maximum 3 entries. Omit the section entirely when there is nothing structural to record (missing ticket details are NOT backlog material — only missing knowledge base content is).
++
++## STYLE RULES
++
++- Be concrete: name files, functions, and documents when the knowledge base provides them.
++- No filler, no restating the knowledge base at length — reference it.
++- If the provided documents are irrelevant to the ticket, say so immediately in "Ontbrekende informatie" instead of forcing a plan out of them.
++- If the ticket is entirely outside the knowledge base's domain, say so in one sentence and list under "Ontbrekende informatie" which documents would need to exist.
+diff --git a/agents/agent7-linguist.md b/agents/agent7-linguist.md
+new file mode 100644
+index 0000000..55223dd
+--- /dev/null
++++ b/agents/agent7-linguist.md
+@@ -0,0 +1,63 @@
++# Agent 7 — Linguist (Dutch language QA)
++
++> Paste everything below the `---` line into Msty Skills Studio as the skill
++> instructions (SKILL.md body) for the **Linguist** skill.
++>
++> Recommended model settings: temperature 0.2, top_p 0.9.
++> Use system prompt mode **Replace**.
++>
++> This agent runs IN the per-note pipeline, between the Structurer (Agent 2)
++> and the Visualizer (Agent 3). It validates Dutch business prose and the
++> Dutch/English protocol without touching code, toggles, or diagrams.
++
++---
++
++You are THE LINGUIST, the Dutch language quality gate in an automated documentation pipeline. You receive a structured markdown document from the Structurer. You validate and lightly repair Dutch business prose and the language protocol. You pass the document onward.
++
++## OUTPUT CONTRACT (absolute rules)
++
++1. Your entire response is the document itself. No preamble, no commentary, no outer code fence.
++2. The first character of your response is `#`.
++3. You may change ONLY Dutch business prose in body text (outside code, toggles, mermaid, and headings). Everything else is untouchable.
++
++## LANGUAGE PROTOCOL (validate and enforce)
++
++The Structurer should have followed these rules. Fix violations where the fix is unambiguous:
++
++1. **Business prose in Dutch.** Section bodies under business topics (`## Samenvatting`, `## Kernconcepten`, Dutch-named sections) must be Dutch. If a whole paragraph is accidentally English, translate it to Dutch without changing meaning.
++2. **First-use translation.** The first time a Dutch business concept appears, it must include an English translation in italics: `**Voorraadbeheer** (*Inventory Management*)`. After first use, Dutch term alone is fine. Add missing translations; remove duplicate translations on repeat mentions.
++3. **Technical terms stay English, never translated.** API, endpoint, queue, migration, cache, deployment, framework names, function names, class names, file names, config keys — always English. If a technical term was translated to Dutch (e.g. "wachtrij" for queue), revert to the English term.
++4. **Fixed headings stay as-is:** `## Samenvatting`, `## Kernconcepten`, `## Open Vragen` — do not rename.
++5. **Mermaid labels:** match the language of the section they sit in. Dutch section → Dutch labels with English technical terms where needed.
++
++## WHAT YOU MAY FIX (surgical edits only)
++
++- Obvious Dutch spelling/grammar errors in business prose.
++- Missing or wrong first-use English translations.
++- Accidentally translated technical terms → revert to English.
++- Inconsistent Dutch term for the same concept within one document → pick one and unify.
++- Awkward Dutch that is clearly machine-generated AND you can improve without changing meaning.
++
++## WHAT YOU MUST NOT TOUCH
++
++- Code inside toggles or code fences — not a single character.
++- `<details>`, `<summary>`, mermaid blocks — structure and content unchanged.
++- `[[wiki links]]` — do not add, remove, or rename links (that is the Curator's job).
++- `> [!warning] VERIFY:` and `> [!note] UNVERIFIED:` callouts — leave exactly as written.
++- Document structure, section order, headings (except fixing a heading that is clearly English when it should be Dutch for a business topic).
++
++## FLAGGING (when unsure)
++
++When a Dutch phrase might be wrong but you are not confident enough to fix it, insert on the line below:
++
++> [!note] TAAL: <one sentence describing the issue>
++
++Maximum 3 TAAL callouts per document. Prefer fixing over flagging when the fix is clear.
++
++## FINAL CHECK
++
++- Business prose Dutch? Technical terms English? First-use translations present?
++- No changes inside code/toggles/mermaid?
++- First character `#`, no preamble?
++
++Respond with the document only.
+diff --git a/agents/agent8-sentinel.md b/agents/agent8-sentinel.md
+new file mode 100644
+index 0000000..97e0076
+--- /dev/null
++++ b/agents/agent8-sentinel.md
+@@ -0,0 +1,99 @@
++# Agent 8 — Sentinel (code change watcher)
++
++> Paste everything below the `---` line into Msty Skills Studio as the skill
++> instructions (SKILL.md body) for the **Sentinel** skill.
++>
++> Recommended model settings: temperature 0.2, top_p 0.9.
++> Use system prompt mode **Replace**.
++>
++> This agent is NOT part of the per-note pipeline. It runs weekly (or on demand)
++> via the `kb-sentinel-check` playbook. The playbook gathers git metadata and
++> passes it to this skill; the skill produces a changelog and stale-doc backlog
++> entries. It never runs git commands itself — Claw/the playbook does that.
++>
++> The playbook provides four labeled inputs:
++>   1. STATE — contents of `03_meta/sentinel-state.md`
++>   2. COMMITS — `git log --oneline` output from last_commit to HEAD
++>   3. DIFF_SUMMARY — `git diff --stat` and key `git log` messages (truncated)
++>   4. KB_INDEX — list of document titles in `02_processed/` (filenames only)
++
++---
++
++You are THE SENTINEL, the code-change watcher for a documentation knowledge base. You compare what changed in the codebase since the last check against what the knowledge base documents cover. You produce a human-readable changelog and a list of documents that may now be stale.
++
++## OUTPUT CONTRACT (absolute rules)
++
++1. Output exactly three sections in this order, separated by marker lines:
++   - The changelog (markdown, starts with `# Code changelog`)
++   - A line containing exactly `=== BACKLOG ===` (only if stale docs found; omit entire marker and section if none)
++   - A line containing exactly `=== STATE ===` followed by the updated state block
++2. No preamble before the changelog. No commentary after the state block.
++
++## CHANGELOG FORMAT
++
++```markdown
++# Code changelog
++
++**Repository:** <repo path from STATE>
++**Previous commit:** <short hash from STATE, or "initial check">
++**Current commit:** <short hash of HEAD from COMMITS>
++**Checked at:** <today's date YYYY-MM-DD>
++
++## Summary
++
++2-4 sentences: what kind of changes happened (features, refactors, bugfixes, config). No file contents, no secrets.
++
++## Commits
++
++| Hash | Message |
++|------|---------|
++| abc1234 | Short commit message |
++| ... | ... |
++
++## Files touched (grouped)
++
++- **<area name e.g. Stock sync>:** `path/to/file.php`, `path/to/other.php`
++- **<area name>:** ...
++
++## Knowledge base impact
++
++Bullet list: which KB documents (from KB_INDEX) are LIKELY affected and why, matched by filename/title similarity, paths mentioned in commit messages, or obvious domain overlap. If no overlap: "No obvious KB impact from file paths alone."
++```
++
++Keep the changelog metadata-only — never paste code diffs, env values, or secrets.
++
++## STALE DOCUMENT DETECTION (backlog)
++
++After `=== BACKLOG ===`, one entry per document that should be reviewed or re-processed:
++
++- [ ] **<KB document title>** — Code changed: <files or area>. Commit <hash>. Re-process raw note or verify doc still accurate. `#stale-doc`
++
++Rules:
++- Only flag when there is a plausible link between changed files/commits and a KB document title or domain.
++- Maximum 10 entries. Most likely stale first.
++- If COMMITS shows no new commits since last check, output changelog with "No new commits since last check" and omit `=== BACKLOG ===` entirely.
++- If this is the initial check (no previous commit in STATE), produce the changelog and omit backlog unless you can already match existing KB docs to recent commits.
++
++## STATE BLOCK FORMAT
++
++After `=== STATE ===`:
++
++```yaml
++last_commit: <full or short hash of HEAD from COMMITS>
++last_checked: <YYYY-MM-DD>
++code_repo: <path from STATE — unchanged>
++branch: <branch name from STATE, default master or main>
++```
++
++The playbook writes this block back to `03_meta/sentinel-state.md`, overwriting the file.
++
++## MATCHING HEURISTICS
++
++Match changed file paths and commit messages to KB document titles loosely:
++- `StockSyncService.php` changed → flag `Stock Sync Debouncing` if it exists in KB_INDEX
++- Commit message mentions "inventory" → flag docs with Voorraad/Stock/Inventory in the title
++- Broad refactors touching many files → flag the most central doc in that domain, not every doc
++
++When uncertain, flag with "verify" tone in the backlog sentence rather than staying silent.
++
++Respond with changelog, optional backlog, and state block only.
+diff --git a/claw/playbook.md b/claw/playbook.md
+new file mode 100644
+index 0000000..97231f8
+--- /dev/null
++++ b/claw/playbook.md
+@@ -0,0 +1,266 @@
++# Msty Claw Orchestration Guide
++
++Step-by-step configuration to chain the agents into an automated pipeline:
++Agents 1-4 plus Agent 7 (Linguist) form the per-note assembly line; Agent 5
++(Curator) is a scheduled wiki gardener (section 9); Agent 6 (Consultant) is
++an interactive ticket helper (section 10); Agent 8 (Sentinel) is a weekly
++code-change watcher (section 11). Follow the steps in order; do not enable the
++watcher (step 7) until manual runs (step 6) produce correct output.
++
++Replace `<REPO>` below with the absolute path to this repo on the current
++machine (e.g. `/Users/you/Code/RAGgamuffin` at home, `C:\Code\RAGgamuffin` at work).
++
++Replace `<CODE_REPO>` with the absolute path to the application codebase you
++document at work (e.g. `/Users/you/Code/my-laravel-app`). The Sentinel reads
++this repo; the KB pipeline does not write to it.
++
++---
++
++## 1. Providers — local models
++
++Settings > Providers:
++
++- Confirm your llama.cpp models (Gemma / Qwen) are listed and selectable.
++- Suggested assignment:
++  - Agent 1 (Verifier): your strongest reasoning model (e.g. Qwen) — fact-checking is the hardest job.
++  - Agent 7 (Linguist): a model with decent Dutch; same tier as Verifier if available.
++  - Agents 2, 3, 4: any instruction-following model; formatting fidelity matters more than raw intelligence.
++  - Agent 8 (Sentinel): reasoning model; reads commit messages and matches to KB titles.
++- Per-skill model settings (set when creating each skill, step 4):
++
++| Agent | temperature | top_p | notes |
++|---|---|---|---|
++| 1 Verifier | 0.3 | 0.9 | needs slight reasoning latitude |
++| 2 Structurer | 0.1–0.2 | 0.9 | deterministic formatting |
++| 7 Linguist | 0.2 | 0.9 | Dutch QA; light edits only |
++| 3 Visualizer | 0.1 | 0.9 | mermaid syntax breaks easily at higher temps |
++| 4 Critic | 0.1 | 0.9 | mechanical validation |
++| 5 Curator | 0.2 | 0.9 | link matching needs a little judgment |
++| 6 Consultant | 0.4 | 0.9 | plans and reasons; strongest model you have |
++| 8 Sentinel | 0.2 | 0.9 | commit-to-KB matching |
++
++Set repeat_penalty ~1.1 if available. Give each agent the largest context window
++your hardware allows — a note plus a structured rewrite can be long.
++
++## 2. Bot
++
++Settings > Bots > Create:
++
++- **Workspace**: Project folder → `<REPO>/vault`
++- **Runtime**: Host (fast local iteration; switch to Container later if you want isolation)
++- **Routing**: Local only — no channels, no remote delivery
++- **Permissions**: minimum needed — file read/write inside the workspace only
++- One bot is enough; the pipeline stages are skills, not separate bots ("one purpose per bot" still holds: this bot's one purpose is the KB pipeline).
++
++## 3. Security baseline (do this BEFORE first run)
++
++Settings > Security:
++
++- **Allowed Folders**:
++  - `<REPO>/vault` — read/write (pipeline output, logs, backlog)
++  - `<CODE_REPO>` — **read-only** (Sentinel git reads only; add only when you enable section 11)
++  Do NOT allow your home directory.
++- **Blocked Patterns**: keep defaults (`.ssh`, `.env`, `credentials`, etc.).
++- **Network Guard**: `Strict` — this pipeline never needs the internet. On the work computer this is non-negotiable.
++- **Approvals**: keep ON until the pipeline has run cleanly several times, then relax for file writes inside the vault if the prompts get tedious.
++
++## 4. Skills (Skills Studio)
++
++Settings > Agent Mode > Skills Studio:
++
++1. Create a folder `kb-pipeline`.
++2. Create eight skills inside it: `kb-verifier`, `kb-structurer`, `kb-linguist`, `kb-visualizer`, `kb-critic`, `kb-curator`, `kb-consultant`, `kb-sentinel`.
++3. For each, paste the contents of the matching file in `<REPO>/agents/` (everything below the `---` line) into the skill instructions.
++4. System prompt mode: **Replace** — the default assistant prompt would dilute the output contracts.
++5. Keep skill IDs stable; the playbooks reference them by name.
++
++Update protocol: the repo files in `agents/` are the source of truth. When you
++improve a prompt, edit the repo file first, commit, then re-paste into Skills
++Studio on each machine.
++
++## 5. Playbook
++
++Create a playbook `kb-process-note` (custom authoring, or teach-mode from a
++successful manual chat run). The ordered steps:
++
++1. **Input**: list `01_unprocessed/`, pick the OLDEST `.md` file. If the folder is empty, stop. Process exactly ONE file per run — never batch (small models + long contexts = garbage output).
++2. **Agent 1**: run skill `kb-verifier` with the raw file content as input. Capture output.
++3. **Agent 2**: run skill `kb-structurer` with Agent 1's output as input. Capture output.
++4. **Agent 7**: run skill `kb-linguist` with Agent 2's output as input. Capture output.
++5. **Agent 3**: run skill `kb-visualizer` with Agent 7's output as input. Capture output.
++6. **Agent 4**: run skill `kb-critic` with Agent 3's output as input.
++7. **Write results**:
++   - Split Agent 4's output on the line `=== BACKLOG ===`.
++   - Everything ABOVE the marker → write to `02_processed/<original-filename>.md` (overwrite if it exists).
++   - Everything BELOW the marker (if present) → append under the `## Open` heading in `03_meta/backlog.md`.
++7. **Log the run**: append a run entry to `03_meta/logs/<YYYY-MM-DD>.md`
++   (create the folder/file if missing). Format in section 8 below.
++8. **Cleanup**: move the source file out of `01_unprocessed/` into
++   `03_meta/archive/` (do not delete — the originals are needed for
++   reprocessing, and archiving prevents the watcher from re-triggering).
++
++Success criteria to state in the playbook: `02_processed/<file>.md` exists,
++starts with `#`, contains `## Samenvatting`, contains at least one
++` ```mermaid ` block, and `01_unprocessed/` no longer contains the source file.
++
++## 6. Validate manually first
++
++Per Claw's own rollout guidance:
++
++1. Drop ONE sample note into `01_unprocessed/`.
++2. Run the playbook manually from the playbook screen.
++3. Open the result in Obsidian and check: toggles collapse/expand, mermaid renders, links resolve, Dutch/English split is right.
++4. Repeat with 2-3 notes of different messiness. Use Auto Refine suggestions only when they improve determinism.
++
++## 7. Task — folder watcher (automation)
++
++Only after step 6 is reliable. Settings/Tasks:
++
++- Create a watcher task on `<REPO>/vault/01_unprocessed/` that triggers the `kb-process-note` playbook when a new file appears.
++- Since the playbook processes one file per run, a burst of dropped files drains gradually — that is fine and intentional.
++- Alternative if watchers misbehave: a scheduled task every 15 minutes that runs the playbook (it exits immediately when the folder is empty).
++
++## 8. Logging format
++
++Principle: **log metadata, never content**. Logs prove the system worked and
++show what ran — they must not duplicate note content (which may be sensitive)
++into yet another file.
++
++- One file per day: `03_meta/logs/2026-06-11.md`. Append-only; never edit old entries.
++- One short block per run, written by the playbook (step 7 above):
++
++```markdown
++## 14:32 — stock-sync-debounce.md
++- result: success
++- output: 02_processed/stock-sync-debounce.md
++- agents: verifier ok (2 flags) | structurer ok | linguist ok (1 TAAL) | visualizer ok (2 diagrams) | critic repaired 1 defect
++- backlog: +2 entries
++- duration: ~4 min
++- source: archived
++```
++
++- On failure, the entry becomes verbose: `result: FAILED at visualizer`,
++  what the symptom was, and what to do (e.g. "mermaid parse error — re-run
++  Agent 3 manually"). Quiet on success, loud on failure.
++- Calibration:
++  - Too much: full agent inputs/outputs, prompts, note content, token traces.
++    Claw's activity view already holds run details for forensics.
++  - Right: timestamp, filename, per-agent ok/repaired/failed, counts (flags,
++    diagrams, backlog delta), duration.
++  - Too little: "ran 3 files today" — useless when something silently breaks.
++- Logs live in `03_meta/logs/`, which is gitignored — local only. Delete logs
++  older than ~3 months whenever you notice them; nothing depends on them.
++
++## 9. Curator playbook (wiki gardening)
++
++The Curator turns a pile of documents into an interlinked wiki and surfaces
++missing knowledge. It is a SEPARATE playbook, `kb-curate`, that audits ONE
++processed document per run. Don't run it until `02_processed/` has at least
++a handful of documents — there is nothing to interlink before that.
++
++Ordered steps:
++
++1. **Pick a document**: from `02_processed/`, choose the least-recently
++   audited document. Simplest tracking: keep a plain list of audited
++   filenames in `03_meta/curator-state.md`; pick the first document NOT on
++   the list; when the list contains every document, clear it and start over.
++   (A random pick also works and needs no state — acceptable start.)
++2. **Build the INDEX**: list all `.md` filenames in `02_processed/` (titles
++   only, no content).
++3. **Agent 5**: run skill `kb-curator` with two labeled inputs: the INDEX
++   list, and the full document content.
++4. **Write results**: split output on `=== BACKLOG ===` exactly like the main
++   pipeline. Document above the marker → overwrite the file in
++   `02_processed/`. Entries below → append under `## Open` in
++   `03_meta/backlog.md`.
++5. **Log the run** in the daily log: `result`, `links added`, `backlog: +N`.
++
++Scheduling: a weekly scheduled task is plenty (e.g. Friday afternoon, one run
++per existing document or capped at 5 runs). You can also run it on demand
++against a specific document — useful right after processing a batch of
++related notes.
++
++Directed research: to have the Curator study a document YOU choose (one of
++your own, or external documentation you dropped into the vault as a note),
++run `kb-curate` manually and point step 1 at that file. The output is the
++same: links added, missing documents and open questions land on the backlog —
++which becomes your reading/writing TODO list.
++
++## 10. Consultant skill (ticket triage)
++
++`kb-consultant` is NOT a playbook — it is an interactive skill you chat with.
++
++Usage in Msty:
++
++1. Build a Knowledge Stack from `<REPO>/vault/02_processed/` (Msty's RAG
++   feature) and attach it to the consultant chat/persona. Re-sync the stack
++   periodically as documents accumulate. Without a stack, paste the 1-3
++   relevant documents into the chat manually.
++2. Open a chat with the `kb-consultant` skill, paste the ticket/task.
++3. It answers in a fixed format: what it understands → proposed approach
++   (citing `[[documents]]`) → assumptions → missing information.
++4. If its answer ends with `=== BACKLOG ===` entries (`#ticket-gap`), copy
++   them into `03_meta/backlog.md` under `## Open`. Those are knowledge base
++   gaps that a real ticket exposed — the highest-value backlog entries you
++   can get.
++
++Usage in Cursor (the MCP route): with the filesystem MCP server pointed at
++`02_processed/` (see README), paste a ticket into Cursor chat and instruct:
++"Consult the raggamuffin-kb knowledge base before answering; list missing
++information explicitly." Same effect, inside your IDE, with Cursor's models.
++
++## 11. Sentinel playbook (weekly code diff check)
++
++The Sentinel keeps the knowledge base honest against a moving codebase. It
++compares the git history of `<CODE_REPO>` since the last check, writes a
++changelog, and flags KB documents that may be stale.
++
++**One-time setup:**
++
++1. Copy `03_meta/sentinel-state.template.md` → `03_meta/sentinel-state.md`.
++2. Set `code_repo` to `<CODE_REPO>` and `branch` to `main` or `master`.
++3. Add `<CODE_REPO>` to Allowed Folders as **read-only** (section 3).
++4. Leave `last_commit` empty for the first run — the playbook records HEAD.
++
++Create playbook `kb-sentinel-check`:
++
++1. **Read state** from `03_meta/sentinel-state.md` (`last_commit`, `code_repo`, `branch`).
++2. **Git metadata** (via Claw shell in `<CODE_REPO>`, read-only):
++   - If `last_commit` is empty: `git rev-parse HEAD` and `git log -20 --oneline`.
++   - Else: `git log <last_commit>..HEAD --oneline` and `git diff --stat <last_commit>..HEAD`.
++   - If no new commits: write a one-line note to today's log and stop.
++3. **Build KB_INDEX**: list all `.md` filenames in `02_processed/`.
++4. **Agent 8**: run skill `kb-sentinel` with four labeled inputs: STATE,
++   COMMITS, DIFF_SUMMARY, KB_INDEX.
++5. **Write results** — split Sentinel output on markers:
++   - Changelog (above `=== BACKLOG ===`) → `03_meta/changelogs/<YYYY-MM-DD>.md`
++   - Backlog entries (between `=== BACKLOG ===` and `=== STATE ===`) → append under `## Open` in `03_meta/backlog.md`
++   - State block (after `=== STATE ===`) → overwrite `03_meta/sentinel-state.md`
++6. **Log**: `sentinel check: N commits, M stale docs flagged`.
++
++Scheduling: weekly (e.g. Monday morning). Run manually after a big release.
++
++**Your workflow when `#stale-doc` appears:** find the archived raw note in
++`03_meta/archive/`, update it with what changed, copy back to
++`01_unprocessed/` — the pipeline re-processes and overwrites the processed doc.
++
++## Reprocessing (nudging) a note
++
++The pipeline touches each file exactly once: process → archive. It never
++re-analyzes on its own. To re-analyze deliberately:
++
++1. Edit the archived raw note in `03_meta/archive/` (add the new info there —
++   raw notes are the source of truth, processed docs get overwritten).
++2. Copy it back into `01_unprocessed/`.
++3. The watcher picks it up; the new output OVERWRITES the existing file in
++   `02_processed/` (same filename), so links from other notes keep working.
++
++To merge topics: combine the raw notes into one file yourself, drop it in the
++inbox, and delete the superseded documents from `02_processed/`.
++
++## Failure modes to expect
++
++- **Agent output wrapped in a code fence or preceded by chatter**: Agent 4 strips this, but if a file in `02_processed/` ever starts with anything but `#`, the Critic missed it — re-run that file.
++- **Broken mermaid**: open the note in Obsidian; the mermaid block shows a parse error inline. Fix by hand or re-run Agent 3 on the document in a normal chat.
++- **Context overflow on long notes**: split the raw note into two smaller notes. Prefer many small notes over one epic.
++- **Model swaps**: after changing which model backs a skill, redo step 6 from scratch. Different models break contracts in different ways.
+diff --git a/docs/claw-guide.html b/docs/claw-guide.html
+new file mode 100644
+index 0000000..9c1992e
+--- /dev/null
++++ b/docs/claw-guide.html
+@@ -0,0 +1,307 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++<meta charset="UTF-8">
++<meta name="viewport" content="width=device-width, initial-scale=1.0">
++<title>Msty Claw Guide — RAGgamuffin</title>
++<style>
++  :root {
++    --bg: #f7f7f5;
++    --card: #ffffff;
++    --ink: #1f2328;
++    --muted: #57606a;
++    --accent: #b3541e;
++    --accent-soft: #fdeee2;
++    --border: #e3e3df;
++    --code-bg: #f0f0ee;
++    --ok: #2da44e;
++  }
++  * { box-sizing: border-box; }
++  body {
++    margin: 0;
++    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
++    background: var(--bg);
++    color: var(--ink);
++    line-height: 1.65;
++  }
++  header {
++    background: linear-gradient(135deg, #3d2417, #b3541e);
++    color: #fff;
++    padding: 48px 24px 40px;
++    text-align: center;
++  }
++  header h1 { margin: 0 0 8px; font-size: 2.2rem; letter-spacing: -0.5px; }
++  header p { margin: 0 auto; max-width: 660px; opacity: 0.88; }
++  header a { color: #ffd9b8; }
++  nav {
++    position: sticky;
++    top: 0;
++    z-index: 10;
++    background: var(--card);
++    border-bottom: 1px solid var(--border);
++    padding: 10px 16px;
++    text-align: center;
++  }
++  nav a {
++    color: var(--muted);
++    text-decoration: none;
++    font-size: 0.85rem;
++    font-weight: 600;
++    margin: 0 10px;
++    white-space: nowrap;
++  }
++  nav a:hover { color: var(--accent); }
++  main { max-width: 920px; margin: 0 auto; padding: 24px 20px 80px; }
++  section { margin-top: 48px; }
++  h2 {
++    font-size: 1.5rem;
++    border-bottom: 2px solid var(--accent-soft);
++    padding-bottom: 8px;
++    letter-spacing: -0.3px;
++  }
++  h3 { font-size: 1.1rem; margin-top: 28px; }
++  .card {
++    background: var(--card);
++    border: 1px solid var(--border);
++    border-radius: 10px;
++    padding: 20px 24px;
++    margin: 16px 0;
++  }
++  .diagram {
++    background: var(--card);
++    border: 1px solid var(--border);
++    border-radius: 10px;
++    padding: 16px;
++    margin: 16px 0;
++    overflow-x: auto;
++    text-align: center;
++  }
++  .diagram-caption {
++    font-size: 0.82rem;
++    color: var(--muted);
++    text-align: center;
++    margin-top: -8px;
++    margin-bottom: 24px;
++  }
++  code {
++    background: var(--code-bg);
++    padding: 2px 6px;
++    border-radius: 4px;
++    font-size: 0.88em;
++    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
++  }
++  pre.codeblock {
++    background: var(--code-bg);
++    border: 1px solid var(--border);
++    border-radius: 8px;
++    padding: 14px 16px;
++    overflow-x: auto;
++    font-size: 0.85rem;
++    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
++  }
++  table { border-collapse: collapse; width: 100%; margin: 16px 0; background: var(--card); }
++  th, td { border: 1px solid var(--border); padding: 10px 14px; text-align: left; font-size: 0.9rem; vertical-align: top; }
++  th { background: var(--accent-soft); }
++  .pill {
++    display: inline-block;
++    background: var(--accent-soft);
++    color: var(--accent);
++    border-radius: 999px;
++    padding: 1px 10px;
++    font-size: 0.78rem;
++    font-weight: 700;
++    margin-right: 6px;
++  }
++  footer { text-align: center; color: var(--muted); font-size: 0.8rem; padding: 24px; }
++</style>
++</head>
++<body>
++
++<header>
++  <h1>Msty Claw Guide</h1>
++  <p>How Claw actually works — its building blocks, how RAGgamuffin maps onto them, and what your day-to-day operation looks like. Companion to the <a href="documentation.html">main documentation</a>.</p>
++</header>
++
++<nav>
++  <a href="#mental">Mental model</a>
++  <a href="#blocks">Building blocks</a>
++  <a href="#mapping">Our project in Claw</a>
++  <a href="#run">Anatomy of a run</a>
++  <a href="#daily">Day-to-day</a>
++  <a href="#troubleshoot">Troubleshooting</a>
++</nav>
++
++<main>
++
++<!-- ============================================================ -->
++<section id="mental">
++  <h2>The mental model</h2>
++  <div class="card">
++    <p><strong>Msty Studio</strong> is the chat app. <strong>Msty Claw</strong> is its agent sibling: a desktop app where AI doesn't just answer — it <em>does things</em>: reads and writes files, runs multi-step workflows, on a schedule, with guardrails. RAGgamuffin lives entirely in Claw.</p>
++    <p>Claw's design philosophy: every automated action runs inside explicit boundaries you set up front — which folders, which network access, which approvals. You define the cage first, then let the agent loose inside it.</p>
++  </div>
++
++  <pre class="mermaid">
++flowchart TD
++    providers["Providers - which models exist"] --> bot["Bot - identity plus boundaries"]
++    skills["Skills - instruction packs"] --> playbook["Playbook - ordered workflow"]
++    playbook --> bot
++    task["Task - schedule or watcher"] --> playbook
++    security["Security - folders, network, approvals"] --> bot
++    bot --> actions["File reads and writes in the vault"]
++    actions --> activity["Activity - run history"]
++  </pre>
++  <p class="diagram-caption">The six building blocks and how they relate. Security wraps everything the bot does.</p>
++</section>
++
++<!-- ============================================================ -->
++<section id="blocks">
++  <h2>The building blocks</h2>
++
++  <table>
++    <tr><th>Concept</th><th>Where</th><th>What it is</th><th>Analogy</th></tr>
++    <tr><td><span class="pill">1</span>Provider</td><td>Settings &gt; Providers</td><td>A source of models — your local llama.cpp (Gemma/Qwen), optionally cloud APIs</td><td>The engine supplier</td></tr>
++    <tr><td><span class="pill">2</span>Bot</td><td>Settings &gt; Bots</td><td>An execution identity: which workspace folder it lives in, Host or Container runtime, local-only or channel routing, what it's allowed to do</td><td>An employee with a badge that only opens certain doors</td></tr>
++    <tr><td><span class="pill">3</span>Skill</td><td>Settings &gt; Agent Mode &gt; Skills Studio</td><td>A reusable instruction pack (a system prompt with metadata). Our eight agents are eight skills</td><td>A job description</td></tr>
++    <tr><td><span class="pill">4</span>Playbook</td><td>Playbooks</td><td>An ordered, repeatable workflow that chains steps and skills, with success criteria</td><td>A standard operating procedure</td></tr>
++    <tr><td><span class="pill">5</span>Task</td><td>Tasks</td><td>A trigger: run a playbook on a schedule or when a folder changes (watcher)</td><td>The alarm clock</td></tr>
++    <tr><td><span class="pill">6</span>Security</td><td>Settings &gt; Security</td><td>Allowed folders, blocked patterns, Network Guard (outbound rules), approval checkpoints</td><td>The building's keycard system</td></tr>
++  </table>
++
++  <div class="card">
++    <p><strong>Key distinction:</strong> a <em>skill</em> is knowledge ("how to structure a document"), a <em>playbook</em> is process ("take the oldest file, run these four skills in order, write the results"), a <em>task</em> is timing ("do that whenever a file appears"). Keep them separate in your head and Claw stops being confusing.</p>
++  </div>
++</section>
++
++<!-- ============================================================ -->
++<section id="mapping">
++  <h2>How RAGgamuffin maps onto Claw</h2>
++
++  <table>
++    <tr><th>Claw concept</th><th>In this project</th></tr>
++    <tr><td>Provider</td><td>Local llama.cpp models. Strongest model → Verifier and Consultant; any obedient model → the formatting agents</td></tr>
++    <tr><td>Bot</td><td>ONE bot. Workspace: the repo's <code>vault/</code> folder. Runtime: Host. Routing: Local only</td></tr>
++    <tr><td>Skills</td><td>Eight: verifier, structurer, linguist, visualizer, critic (pipeline); curator, sentinel (scheduled); consultant (interactive). Source of truth: the repo's <code>agents/</code> files</td></tr>
++    <tr><td>Playbooks</td><td>Three: <code>kb-process-note</code> (assembly line), <code>kb-curate</code> (wiki gardening), <code>kb-sentinel-check</code> (weekly git diff)</td></tr>
++    <tr><td>Tasks</td><td>Watcher on <code>01_unprocessed/</code> → <code>kb-process-note</code>. Weekly → <code>kb-curate</code> and <code>kb-sentinel-check</code></td></tr>
++    <tr><td>Security</td><td>Allowed folders: <code>vault/</code> read/write; <code>&lt;CODE_REPO&gt;</code> read-only for Sentinel. Network Guard: Strict</td></tr>
++  </table>
++
++  <pre class="mermaid">
++flowchart LR
++    subgraph triggers ["Tasks"]
++        watcher["Watcher on 01_unprocessed"]
++        weekly["Weekly schedule"]
++    end
++    subgraph playbooks ["Playbooks"]
++        process["kb-process-note"]
++        curate["kb-curate"]
++        sentinel["kb-sentinel-check"]
++    end
++    subgraph skillset ["Skills"]
++        s1["kb-verifier"]
++        s2["kb-structurer"]
++        s7["kb-linguist"]
++        s3["kb-visualizer"]
++        s4["kb-critic"]
++        s5["kb-curator"]
++        s6["kb-consultant"]
++        s8["kb-sentinel"]
++    end
++    watcher --> process
++    weekly --> curate
++    weekly --> sentinel
++    process --> s1 --> s2 --> s7 --> s3 --> s4
++    curate --> s5
++    sentinel --> s8
++    you(("You")) -->|"paste ticket"| s6
++  </pre>
++  <p class="diagram-caption">Two automated playbooks plus one interactive skill. The Consultant is the only piece you talk to directly.</p>
++</section>
++
++<!-- ============================================================ -->
++<section id="run">
++  <h2>Anatomy of a run</h2>
++  <p>What actually happens when the watcher fires on a new note:</p>
++
++  <pre class="mermaid">
++sequenceDiagram
++    participant T as Task_Watcher
++    participant P as Playbook
++    participant S as Security
++    participant K as Skills
++    participant V as Vault
++    T->>P: new file detected
++    P->>S: may I read 01_unprocessed?
++    S-->>P: allowed folder - yes
++    P->>K: verifier, structurer, visualizer, critic - in order
++    K-->>P: final document plus backlog section
++    P->>S: may I write 02_processed and 03_meta?
++    S-->>P: yes - or approval prompt if enabled
++    P->>V: write doc, append backlog, append log, archive source
++  </pre>
++  <p class="diagram-caption">Every file operation passes the security layer. With approvals on, Claw asks you before writing — that's the prompt you'll see during your first runs.</p>
++
++  <div class="card">
++    <p><strong>Where to watch it happen:</strong> every bot has an <em>Activity</em> view — the full history of what ran, what it read and wrote, and any errors. This is your forensics tool; the daily logs in <code>03_meta/logs/</code> are your lightweight summary. Check Activity when a run misbehaves, logs when you just want to know what happened today.</p>
++  </div>
++</section>
++
++<!-- ============================================================ -->
++<section id="daily">
++  <h2>Day-to-day operation</h2>
++
++  <table>
++    <tr><th>You want to...</th><th>Do this in Claw</th></tr>
++    <tr><td>Process notes</td><td>Nothing — drop files in <code>01_unprocessed/</code> and the watcher handles it</td></tr>
++    <tr><td>Run the pipeline right now</td><td>Open the <code>kb-process-note</code> playbook → Run. It exits immediately if the inbox is empty</td></tr>
++    <tr><td>Audit the wiki now</td><td>Run <code>kb-curate</code> manually</td></tr>
++    <tr><td>Check if KB is stale vs code</td><td>Run <code>kb-sentinel-check</code> manually or wait for the weekly task; read <code>03_meta/changelogs/</code></td></tr>
++    <tr><td>Triage a ticket</td><td>Open a chat with the <code>kb-consultant</code> skill, paste the ticket. Attach the Knowledge Stack for automatic retrieval</td></tr>
++    <tr><td>See what ran today</td><td>Open <code>03_meta/logs/&lt;today&gt;.md</code> in Obsidian — or the bot's Activity view for full detail</td></tr>
++    <tr><td>Pause the automation</td><td>Disable the watcher task (Tasks screen). Files just queue up in the inbox; nothing is lost</td></tr>
++    <tr><td>Improve a prompt</td><td>Edit the file in the repo's <code>agents/</code>, commit, re-paste into the skill on each machine. Repo is the source of truth</td></tr>
++    <tr><td>Test a prompt change safely</td><td>Clone the bot or skill, test on a sample note, then promote the change</td></tr>
++  </table>
++
++  <h3>Approvals: what to expect at first</h3>
++  <div class="card">
++    <p>With the recommended baseline, Claw will interrupt and ask permission for file writes during your first runs. This is intentional — you're verifying the pipeline writes exactly where it should (<code>02_processed/</code>, <code>03_meta/</code>) and nowhere else. After several clean runs, relax approvals for writes inside the vault and the pipeline becomes fully hands-off.</p>
++  </div>
++
++  <h3>The golden rules</h3>
++  <ul>
++    <li>One bot, one purpose. Don't bolt unrelated jobs onto the KB bot — make a new bot.</li>
++    <li>Security before skills, manual runs before watchers. Always.</li>
++    <li>Never widen Allowed Folders to fix an error; figure out why the playbook tried to write outside the vault instead.</li>
++    <li>After swapping which model backs a skill, re-validate with manual runs — different models break formatting contracts in different ways.</li>
++  </ul>
++</section>
++
++<!-- ============================================================ -->
++<section id="troubleshoot">
++  <h2>Troubleshooting</h2>
++
++  <table>
++    <tr><th>Symptom</th><th>Likely cause</th><th>Fix</th></tr>
++    <tr><td>Nothing happens when I drop a file</td><td>Watcher task disabled, or bot stopped</td><td>Check Tasks screen; run the playbook manually as a test; check Activity for errors</td></tr>
++    <tr><td>"Permission denied" on a file operation</td><td>Folder not in Allowed Folders, or path mismatch (e.g. repo moved)</td><td>Settings &gt; Security — confirm the vault's absolute path on THIS machine is listed</td></tr>
++    <tr><td>Output file starts with chatter instead of a heading</td><td>A model broke the output contract and the Critic missed it</td><td>Re-run the playbook on that file; if it recurs, lower that skill's temperature</td></tr>
++    <tr><td>Mermaid diagram shows a parse error in Obsidian</td><td>Visualizer produced invalid syntax</td><td>Paste the document into a chat with <code>kb-visualizer</code> to regenerate, or fix the block by hand</td></tr>
++    <tr><td>Pipeline hangs mid-run</td><td>Model context overflow on a long note</td><td>Split the raw note into smaller notes; keep one topic per note</td></tr>
++    <tr><td>Same file processed twice</td><td>Archive step failed, file stayed in the inbox</td><td>Check Activity for the cleanup step error; move the file to <code>03_meta/archive/</code> manually</td></tr>
++    <tr><td>Consultant gives generic answers</td><td>Knowledge Stack not attached or stale</td><td>Re-sync the Knowledge Stack from <code>02_processed/</code>; confirm it's attached to the chat</td></tr>
++  </table>
++</section>
++
++</main>
++
++<footer>RAGgamuffin — Msty Claw guide. Companion to <a href="documentation.html">documentation.html</a>. Diagrams render via Mermaid (CDN).</footer>
++
++<script type="module">
++  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
++  mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "strict" });
++</script>
++
++</body>
++</html>
+diff --git a/docs/documentation.html b/docs/documentation.html
+new file mode 100644
+index 0000000..a4eb3aa
+--- /dev/null
++++ b/docs/documentation.html
+@@ -0,0 +1,496 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++<meta charset="UTF-8">
++<meta name="viewport" content="width=device-width, initial-scale=1.0">
++<title>RAGgamuffin — Documentation</title>
++<style>
++  :root {
++    --bg: #f7f7f5;
++    --card: #ffffff;
++    --ink: #1f2328;
++    --muted: #57606a;
++    --accent: #6b4fbb;
++    --accent-soft: #efeaff;
++    --border: #e3e3df;
++    --code-bg: #f0f0ee;
++    --ok: #2da44e;
++    --warn: #bf8700;
++  }
++  * { box-sizing: border-box; }
++  body {
++    margin: 0;
++    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
++    background: var(--bg);
++    color: var(--ink);
++    line-height: 1.65;
++  }
++  header {
++    background: linear-gradient(135deg, #2d2440, #6b4fbb);
++    color: #fff;
++    padding: 48px 24px 40px;
++    text-align: center;
++  }
++  header h1 { margin: 0 0 8px; font-size: 2.2rem; letter-spacing: -0.5px; }
++  header p { margin: 0 auto; max-width: 640px; opacity: 0.85; }
++  nav {
++    position: sticky;
++    top: 0;
++    z-index: 10;
++    background: var(--card);
++    border-bottom: 1px solid var(--border);
++    padding: 10px 16px;
++    text-align: center;
++  }
++  nav a {
++    color: var(--muted);
++    text-decoration: none;
++    font-size: 0.85rem;
++    font-weight: 600;
++    margin: 0 10px;
++    white-space: nowrap;
++  }
++  nav a:hover { color: var(--accent); }
++  main { max-width: 920px; margin: 0 auto; padding: 24px 20px 80px; }
++  section { margin-top: 48px; }
++  h2 {
++    font-size: 1.5rem;
++    border-bottom: 2px solid var(--accent-soft);
++    padding-bottom: 8px;
++    letter-spacing: -0.3px;
++  }
++  h3 { font-size: 1.1rem; margin-top: 28px; }
++  .card {
++    background: var(--card);
++    border: 1px solid var(--border);
++    border-radius: 10px;
++    padding: 20px 24px;
++    margin: 16px 0;
++  }
++  .diagram {
++    background: var(--card);
++    border: 1px solid var(--border);
++    border-radius: 10px;
++    padding: 16px;
++    margin: 16px 0;
++    overflow-x: auto;
++    text-align: center;
++  }
++  .diagram-caption {
++    font-size: 0.82rem;
++    color: var(--muted);
++    text-align: center;
++    margin-top: -8px;
++    margin-bottom: 24px;
++  }
++  code {
++    background: var(--code-bg);
++    padding: 2px 6px;
++    border-radius: 4px;
++    font-size: 0.88em;
++    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
++  }
++  pre.codeblock {
++    background: var(--code-bg);
++    border: 1px solid var(--border);
++    border-radius: 8px;
++    padding: 14px 16px;
++    overflow-x: auto;
++    font-size: 0.85rem;
++    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
++  }
++  table { border-collapse: collapse; width: 100%; margin: 16px 0; background: var(--card); }
++  th, td { border: 1px solid var(--border); padding: 10px 14px; text-align: left; font-size: 0.9rem; }
++  th { background: var(--accent-soft); }
++  .pill {
++    display: inline-block;
++    background: var(--accent-soft);
++    color: var(--accent);
++    border-radius: 999px;
++    padding: 1px 10px;
++    font-size: 0.78rem;
++    font-weight: 700;
++    margin-right: 6px;
++  }
++  .good { color: var(--ok); font-weight: 600; }
++  .bad { color: #c0392b; font-weight: 600; }
++  .checklist li { margin: 8px 0; }
++  footer { text-align: center; color: var(--muted); font-size: 0.8rem; padding: 24px; }
++</style>
++</head>
++<body>
++
++<header>
++  <h1>RAGgamuffin</h1>
++  <p>A local-first, multi-agent assembly line that turns messy coding notes into a clean, structured Obsidian knowledge base. Everything runs on your machine. No data leaves it.</p>
++</header>
++
++<nav>
++  <a href="#what">What is this</a>
++  <a href="#how">How it works</a>
++  <a href="#wiki">Wiki loop</a>
++  <a href="#userflow">User flow</a>
++  <a href="#obsidian">Obsidian guide</a>
++  <a href="#msty">Msty setup</a>
++  <a href="#logging">Logging</a>
++  <a href="#faq">FAQ</a>
++  <a href="claw-guide.html">Claw guide</a>
++</nav>
++
++<main>
++
++<!-- ============================================================ -->
++<section id="what">
++  <h2>What is this?</h2>
++  <div class="card">
++    <p>You write rough notes while coding — half sentences, pasted snippets, "remember this gotcha". They pile up and become useless. RAGgamuffin fixes that:</p>
++    <p>You drop a raw note into a folder. Local AI agents (running via llama.cpp inside Msty Claw) take turns improving it. A finished, structured document appears in your Obsidian vault, with business logic up top, Dutch prose checked, technical code tucked into collapsible toggles, key concepts linked together, and diagrams where they help.</p>
++    <p><strong>Local-first means private.</strong> The models run on your own machine. Company code in your notes never touches a cloud API.</p>
++  </div>
++
++  <pre class="mermaid">
++flowchart LR
++    you(("You")) -->|"drop messy note"| inbox["01_unprocessed"]
++    inbox --> pipeline["Per-note pipeline"]
++    pipeline -->|"clean document"| kb["02_processed"]
++    pipeline -->|"gaps and questions"| meta["03_meta backlog"]
++    kb --> obsidian["Browse in Obsidian"]
++    kb -.->|"later"| cursor["Cursor via MCP"]
++  </pre>
++  <p class="diagram-caption">The big picture: one folder in, two folders out.</p>
++</section>
++
++<!-- ============================================================ -->
++<section id="how">
++  <h2>How it works: the assembly line</h2>
++
++  <table>
++    <tr><th>Agent</th><th>Role</th><th>What it does</th><th>What it must NOT do</th></tr>
++    <tr><td><span class="pill">1</span>Verifier</td><td>Fact-checker</td><td>Compares your prose claims against the code in the note; flags contradictions with warning callouts</td><td>Never silently fixes anything</td></tr>
++    <tr><td><span class="pill">2</span>Structurer</td><td>Editor</td><td>Business logic first in Dutch with English translations, code hidden in collapsible toggles, key concepts wiki-linked</td><td>Never changes code content</td></tr>
++    <tr><td><span class="pill">7</span>Linguist</td><td>Dutch QA</td><td>Validates Dutch business prose, first-use translations, and that technical terms stay in English</td><td>Never touches code, toggles, or mermaid</td></tr>
++    <tr><td><span class="pill">3</span>Visualizer</td><td>Illustrator</td><td>Inserts Mermaid flowcharts and sequence diagrams where they clarify</td><td>Never rewords a single sentence</td></tr>
++    <tr><td><span class="pill">4</span>Critic</td><td>Quality gate</td><td>Repairs mechanical formatting defects, writes the final file, reports knowledge gaps to the backlog</td><td>Never touches meaning or code</td></tr>
++    <tr><td><span class="pill">5</span>Curator</td><td>Wiki gardener (scheduled)</td><td>Audits one document at a time: adds missing wiki links, reports missing documents and reader questions</td><td>Never changes anything except adding links</td></tr>
++    <tr><td><span class="pill">6</span>Consultant</td><td>Ticket triage (interactive)</td><td>You paste a ticket; it proposes a plan grounded in the knowledge base and lists what info is missing</td><td>Never presents a guess as knowledge</td></tr>
++    <tr><td><span class="pill">8</span>Sentinel</td><td>Code watcher (weekly)</td><td>Compares git commits since last check against the KB; writes a changelog and flags stale documents</td><td>Never pastes code diffs or secrets into logs</td></tr>
++  </table>
++  <p class="diagram-caption">Agents 1, 2, 7, 3, 4 are the per-note pipeline. Agents 5 and 8 run on a schedule. Agent 6 is interactive.</p>
++
++  <pre class="mermaid">
++sequenceDiagram
++    participant W as Watcher
++    participant A1 as Agent1_Verifier
++    participant A2 as Agent2_Structurer
++    participant A7 as Agent7_Linguist
++    participant A3 as Agent3_Visualizer
++    participant A4 as Agent4_Critic
++    participant V as Vault
++    W->>A1: raw note text
++    A1->>A2: note plus VERIFY flags
++    A2->>A7: structured document
++    A7->>A3: Dutch-validated document
++    A3->>A4: document plus diagrams
++    A4->>V: write final doc to 02_processed
++    A4->>V: append gaps to backlog
++    A4->>V: append run entry to daily log
++  </pre>
++  <p class="diagram-caption">One pipeline run, from raw note to finished document. Each agent only sees the previous agent's output.</p>
++
++  <h3>Why a chain of small agents instead of one big prompt?</h3>
++  <div class="card">
++    <p>Small local models (4B-class Gemma/Qwen) do one job well and many jobs badly. Splitting the work means each agent gets a short, strict instruction set and a small context. It also means failures are isolated: if diagrams break, you re-run Agent 3, not the whole thing.</p>
++  </div>
++
++  <h3>What a finished document looks like</h3>
++  <pre class="mermaid">
++flowchart TD
++    title["H1 Title"] --> samenvatting["Samenvatting - business summary, no code"]
++    samenvatting --> kern["Kernconcepten - linked core concepts"]
++    kern --> sections["Topic sections - explanation first"]
++    sections --> toggle["Collapsible toggle - code hidden inside"]
++    sections --> diagram["Mermaid diagram"]
++    sections --> vragen["Open Vragen - unresolved flags"]
++  </pre>
++  <p class="diagram-caption">Document anatomy: skim the top, expand toggles only when you need the code.</p>
++</section>
++
++<!-- ============================================================ -->
++<section id="wiki">
++  <h2>The wiki loop: Curator and Consultant</h2>
++
++  <div class="card">
++    <p>Processing notes one by one gives you good <em>documents</em>. Two more agents turn those documents into a <em>wiki</em> — an interlinked, self-improving knowledge network.</p>
++  </div>
++
++  <h3>The Curator (Agent 5) — scheduled gardening</h3>
++  <p>On a schedule (weekly) or on demand, the Curator picks one processed document and audits it against the entire knowledge base index:</p>
++  <ul>
++    <li><strong>Adds missing links:</strong> if a document mentions a concept that another document covers, but doesn't link it, the Curator inserts the <code>[[link]]</code>. The graph gets denser over time, automatically.</li>
++    <li><strong>Finds promised-but-missing documents:</strong> links pointing at documents that don't exist become <code>#missing-doc</code> backlog entries — your writing TODO list.</li>
++    <li><strong>Asks reader questions:</strong> things a reader would wonder after this document that nothing in the base answers become <code>#open-question</code> entries. Answer them yourself or hand them to another LLM, then drop the answer into the inbox as a new note.</li>
++  </ul>
++
++  <pre class="mermaid">
++flowchart TD
++    schedule["Weekly task or manual run"] --> pick["Curator picks one document"]
++    pick --> audit["Audit against index of all titles"]
++    audit --> links["Insert missing wiki links"]
++    audit --> gaps["Report missing documents"]
++    audit --> questions["Raise reader questions"]
++    gaps --> backlog["Backlog"]
++    questions --> backlog
++    backlog --> you(("You answer or research"))
++    you --> newNote["New raw note in inbox"]
++    newNote --> pipeline["Pipeline processes it"]
++    pipeline --> denser["Knowledge base grows and interlinks"]
++    denser --> pick
++  </pre>
++  <p class="diagram-caption">The self-improving loop: every audit produces either better linking or new writing prompts. The wiki literally tells you what to write next.</p>
++
++  <h3>The Consultant (Agent 6) — paste a ticket, get a grounded plan</h3>
++  <p>An interactive skill, not a pipeline stage. Open a chat with it in Msty (with a Knowledge Stack built from <code>02_processed/</code> attached), paste a ticket or task, and it answers in a fixed format:</p>
++  <ol>
++    <li><strong>Wat ik begrijp</strong> — its interpretation of the ticket</li>
++    <li><strong>Voorgestelde aanpak</strong> — a concrete plan, citing the knowledge base documents it used</li>
++    <li><strong>Aannames</strong> — every assumption it had to make, explicitly</li>
++    <li><strong>Ontbrekende informatie</strong> — what's missing and who can answer it; structural gaps become <code>#ticket-gap</code> backlog entries</li>
++  </ol>
++
++  <pre class="mermaid">
++flowchart LR
++    ticket["You paste a ticket"] --> consultant["Consultant skill"]
++    kb["Knowledge Stack from 02_processed"] --> consultant
++    consultant --> plan["Grounded plan of attack"]
++    consultant --> missing["Explicit missing-info list"]
++    missing --> backlog["Ticket gaps to backlog"]
++    backlog --> improve["Knowledge base improves where reality demanded it"]
++  </pre>
++  <p class="diagram-caption">Real tickets expose the most valuable gaps: knowledge you actually needed and didn't have.</p>
++
++  <div class="card">
++    <p><strong>Same trick inside Cursor:</strong> with the filesystem MCP server pointed at <code>02_processed/</code> (see README), paste the ticket into Cursor chat and tell it to consult the knowledge base before answering and to list missing information explicitly. Your KB becomes IDE context.</p>
++  </div>
++
++  <h3>The Sentinel (Agent 8) — weekly code diff check</h3>
++  <p>The codebase moves; the knowledge base can go stale. Once a week the Sentinel compares git history on your work repo against the last commit it checked, writes a changelog, and flags KB documents that likely need updating.</p>
++
++  <pre class="mermaid">
++flowchart TD
++    weekly["Weekly scheduled task"] --> state["Read last_commit from sentinel-state"]
++    state --> git["Git log and diff since last commit"]
++    git --> sentinel["Sentinel matches changes to KB titles"]
++    sentinel --> changelog["Write changelog to 03_meta/changelogs"]
++    sentinel --> stale["Flag stale docs on backlog"]
++    sentinel --> update["Update last_commit in state"]
++    stale --> you(("You update raw note"))
++    you --> inbox["Drop back in 01_unprocessed"]
++    inbox --> fresh["Pipeline re-processes doc"]
++  </pre>
++  <p class="diagram-caption">The KB stays tied to the code. Stale-doc backlog entries tell you exactly what to refresh.</p>
++
++  <p>Setup: copy <code>sentinel-state.template.md</code> to <code>sentinel-state.md</code>, point <code>code_repo</code> at your Laravel/project repo (not RAGgamuffin itself), add that repo to Claw Allowed Folders as read-only. Full steps in <code>claw/playbook.md</code> section 11.</p>
++</section>
++
++<!-- ============================================================ -->
++<section id="userflow">
++  <h2>User flow (UX)</h2>
++
++  <div class="card">
++    <p><strong>The short version:</strong> the system is a queue, not a loop. It drains <code>01_unprocessed</code> one file at a time and then goes idle. It never reprocesses on its own — a file is touched exactly once, then archived. You "nudge" a re-analysis by putting a file back in the inbox.</p>
++  </div>
++
++  <pre class="mermaid">
++flowchart TD
++    drop["You drop note in 01_unprocessed"] --> trigger["Watcher fires"]
++    trigger --> run["Pipeline processes ONE file"]
++    run --> out["Document appears in 02_processed"]
++    run --> archive["Raw note moved to 03_meta archive"]
++    out --> more{"More files in inbox?"}
++    more -->|"yes"| run
++    more -->|"no"| idle["System idles - zero CPU"]
++    idle -.->|"new file later"| trigger
++  </pre>
++  <p class="diagram-caption">The queue drains, then sleeps. No endless processing, no surprise CPU usage.</p>
++
++  <h3>A file's life</h3>
++  <pre class="mermaid">
++flowchart LR
++    raw["Raw note"] --> queued["Waiting in 01_unprocessed"]
++    queued --> processing["Being processed"]
++    processing --> done["Final doc in 02_processed"]
++    processing --> archived["Original archived in 03_meta"]
++    done -->|"you want changes"| nudge["Copy archived note back to inbox"]
++    nudge --> queued
++  </pre>
++  <p class="diagram-caption">Re-analysis is a deliberate human action: copy the archived original back into the inbox. The new output overwrites the old document.</p>
++
++  <h3>Your daily rhythm</h3>
++  <ol>
++    <li><strong>While coding:</strong> jot rough notes, paste the relevant snippets, save as <code>.md</code> into <code>vault/01_unprocessed/</code>. Don't polish — that's the machine's job. One topic per note.</li>
++    <li><strong>Whenever:</strong> the pipeline picks each note up, one at a time. You don't wait for it.</li>
++    <li><strong>When you need knowledge:</strong> open Obsidian, search or click through links.</li>
++    <li><strong>Weekly-ish:</strong> skim <code>03_meta/backlog.md</code>. It lists what the Critic flagged: contradictions, missing explanations, open questions. Fix the worst ones by editing the archived raw note and dropping it back in the inbox.</li>
++  </ol>
++
++  <h3>How do I nudge a re-analysis?</h3>
++  <table>
++    <tr><th>Situation</th><th>What you do</th></tr>
++    <tr><td>I added more info to a topic</td><td>Edit the archived raw note (in <code>03_meta/archive/</code>), copy it into <code>01_unprocessed/</code>. The pipeline re-runs and overwrites the old document.</td></tr>
++    <tr><td>The output is badly formatted</td><td>Re-run the playbook manually in Claw on that file, or chat with the failing agent's skill directly in Claw with the document as input.</td></tr>
++    <tr><td>I want to merge two notes</td><td>Combine the raw notes into one file yourself, drop it in the inbox, delete the two old documents from <code>02_processed/</code>.</td></tr>
++    <tr><td>Nothing is happening</td><td>Check the daily log (see Logging). If empty, the watcher task isn't running — open Claw and run the playbook manually.</td></tr>
++  </table>
++</section>
++
++<!-- ============================================================ -->
++<section id="obsidian">
++  <h2>Obsidian for rookies (and non-technical users)</h2>
++
++  <div class="card">
++    <p>Obsidian is just a viewer/editor for a folder of markdown files. The folder is called a <strong>vault</strong>. In this project, the vault is the repo's <code>vault/</code> folder: open Obsidian, choose <em>"Open folder as vault"</em>, and point it there. That's the entire setup.</p>
++  </div>
++
++  <h3>The four things a reader actually needs</h3>
++  <table>
++    <tr><th>Action</th><th>How</th><th>What it gives you</th></tr>
++    <tr><td>Search everything</td><td><code>Cmd/Ctrl + Shift + F</code></td><td>Full-text search across all processed notes — the number one lookup tool</td></tr>
++    <tr><td>Open a note fast</td><td><code>Cmd/Ctrl + O</code></td><td>Type part of a title, hit Enter</td></tr>
++    <tr><td>Follow connections</td><td>Click any <code>[[linked concept]]</code></td><td>Jump between related topics like a private Wikipedia</td></tr>
++    <tr><td>See the map</td><td>Graph view (icon in the left sidebar)</td><td>A visual map of how all concepts connect — great for spotting clusters and orphans</td></tr>
++  </table>
++
++  <pre class="mermaid">
++flowchart TD
++    q["I have a question"] --> s{"Do I know the topic name?"}
++    s -->|"yes"| quick["Quick open - Cmd O"]
++    s -->|"no"| search["Global search - Cmd Shift F"]
++    quick --> read["Read the Samenvatting"]
++    search --> read
++    read --> enough{"Enough detail?"}
++    enough -->|"yes"| doneNode["Done"]
++    enough -->|"need code"| toggle["Expand the Technical Implementation toggle"]
++    enough -->|"related topic"| link["Click a linked concept"]
++    link --> read
++  </pre>
++  <p class="diagram-caption">Lookup flow for a reader. The documents are designed so non-technical readers stop at the summary, and developers expand the toggles.</p>
++
++  <h3>Why the documents are shaped this way</h3>
++  <ul>
++    <li><strong>Business summary first, in Dutch:</strong> a non-technical colleague reads the top of any note and understands what the thing does and why.</li>
++    <li><strong>Code in collapsed toggles:</strong> readers are never assaulted by a wall of code; developers click once to expand.</li>
++    <li><strong>Wiki links:</strong> concepts like <code>[[Voorraadbeheer]]</code> connect notes automatically. The more notes you process, the more valuable the graph becomes.</li>
++    <li><strong>Diagrams render natively:</strong> Obsidian draws Mermaid blocks as real diagrams, no plugins needed.</li>
++  </ul>
++
++  <div class="card">
++    <p><strong>Rookie warnings:</strong> don't edit files in <code>02_processed/</code> by hand if you ever plan to re-run that note — the pipeline overwrites the file. Make content fixes in the raw note and re-process. And don't rename processed files; wiki links point at filenames.</p>
++  </div>
++</section>
++
++<!-- ============================================================ -->
++<section id="msty">
++  <h2>Msty setup: your personal checklist</h2>
++  <p>Full detail lives in <code>claw/playbook.md</code> in the repo. This is the condensed human checklist — do these in order, on each machine.</p>
++
++  <pre class="mermaid">
++flowchart LR
++    p1["1 Providers - models selectable"] --> p2["2 Bot - workspace vault, local only"]
++    p2 --> p3["3 Security - allow vault folder only, network strict"]
++    p3 --> p4["4 Skills - paste 4 prompts"]
++    p4 --> p5["5 Playbook - chain the skills"]
++    p5 --> p6["6 Manual test runs"]
++    p6 --> p7["7 Enable watcher"]
++  </pre>
++  <p class="diagram-caption">Setup order matters: security before skills, manual runs before automation.</p>
++
++  <ol class="checklist">
++    <li><strong>Providers:</strong> Settings &gt; Providers — confirm your llama.cpp models (Gemma/Qwen) appear. Give your strongest model to Agent 1.</li>
++    <li><strong>Bot:</strong> Settings &gt; Bots — one bot. Workspace = Project folder pointed at <code>&lt;REPO&gt;/vault</code>. Runtime = Host. Routing = Local only.</li>
++    <li><strong>Security:</strong> Settings &gt; Security — Allowed Folders: only <code>&lt;REPO&gt;/vault</code> (read/write). Network Guard: Strict. Approvals: on. Do this <em>before</em> the first run, especially at work.</li>
++    <li><strong>Skills:</strong> Settings &gt; Agent Mode &gt; Skills Studio — create folder <code>kb-pipeline</code>, create 8 skills (verifier, structurer, linguist, visualizer, critic, curator, consultant, sentinel), paste each prompt from the repo's <code>agents/</code> files. System prompt mode: Replace.</li>
++    <li><strong>Playbook:</strong> create <code>kb-process-note</code> — agents 1, 2, 7, 3, 4 in sequence (see <code>claw/playbook.md</code> section 5).</li>
++    <li><strong>Test manually:</strong> drop ONE sample note in the inbox, run the playbook by hand, open the result in Obsidian. Check: toggles collapse, diagrams render, links work. Repeat 2-3 times with different notes.</li>
++    <li><strong>Automate:</strong> only when step 6 is reliably clean, create the watcher task on <code>01_unprocessed/</code> (or a 15-minute scheduled run, which is often more robust than a file watcher).</li>
++  </ol>
++</section>
++
++<!-- ============================================================ -->
++<section id="logging">
++  <h2>Logging</h2>
++
++  <div class="card">
++    <p><strong>Principle: log metadata, never content.</strong> The logs answer "did the system work, on what, and how well" — without duplicating your notes (which may contain sensitive code) into yet another file.</p>
++  </div>
++
++  <h3>Where and what</h3>
++  <p>One file per day: <code>vault/03_meta/logs/2026-06-11.md</code>. One short block per pipeline run, appended by the playbook:</p>
++
++  <pre class="codeblock">## 14:32 — stock-sync-debounce.md
++- result: success
++- output: 02_processed/stock-sync-debounce.md
++- agents: verifier ok | structurer ok | linguist ok | visualizer ok | critic ok
++- backlog: +2 entries
++- duration: ~4 min
++- source: archived</pre>
++
++  <pre class="mermaid">
++flowchart TD
++    run["Pipeline run finishes"] --> entry["Append entry to today's log file"]
++    entry --> q{"Was there an error?"}
++    q -->|"no"| brief["One short block - metadata only"]
++    q -->|"yes"| verbose["Add error detail - which agent, what failed, what to do"]
++    logs["03_meta/logs/"] --> review["You skim during backlog review"]
++    brief --> logs
++    verbose --> logs
++  </pre>
++  <p class="diagram-caption">Quiet on success, loud on failure — the golden rule of pipeline logging.</p>
++
++  <h3>Calibration: too much vs. too little</h3>
++  <table>
++    <tr><th></th><th>Examples</th><th>Why</th></tr>
++    <tr><td class="bad">Too much</td><td>Full agent inputs/outputs, full prompts, the note's content, per-token traces</td><td>Duplicates sensitive content, bloats the vault, nobody reads it; Claw's own activity view already has run details when you need forensics</td></tr>
++    <tr><td class="good">Right</td><td>Timestamp, filename, per-agent ok/repaired/failed, diagram and flag counts, backlog delta, duration</td><td>Enough to spot trends ("visualizer fails on long notes") and audit what ran without exposing content</td></tr>
++    <tr><td class="bad">Too little</td><td>Just "ran 3 files today"</td><td>Useless when something silently breaks; you can't tell which file or which agent</td></tr>
++  </table>
++
++  <h3>Best practices baked into this design</h3>
++  <ul>
++    <li><strong>Append-only, daily rotation:</strong> never edit old entries; one file per day keeps files small and greppable.</li>
++    <li><strong>Errors are verbose, successes are terse:</strong> a failure entry should say which agent, what broke, and what to do.</li>
++    <li><strong>Logs are local-only:</strong> the <code>.gitignore</code> excludes <code>03_meta/</code> contents (except the backlog template), so logs never get committed.</li>
++    <li><strong>Logs are markdown in the vault:</strong> searchable from inside Obsidian itself with the same search you already use.</li>
++    <li><strong>Retention:</strong> delete log files older than ~3 months whenever you notice them; nothing depends on them.</li>
++  </ul>
++</section>
++
++<!-- ============================================================ -->
++<section id="faq">
++  <h2>FAQ</h2>
++  <table>
++    <tr><th>Question</th><th>Answer</th></tr>
++    <tr><td>Does it endlessly process the unprocessed folder?</td><td>No. It processes one file per run, drains the queue, then idles. Files are archived after processing so they're never picked up twice.</td></tr>
++    <tr><td>Can I re-analyze a note?</td><td>Yes — copy the archived raw note from <code>03_meta/archive/</code> back into <code>01_unprocessed/</code>. The new output overwrites the old document.</td></tr>
++    <tr><td>What if a document comes out broken?</td><td>Check the daily log to see which agent misbehaved, then either re-run the playbook on that file or paste the document into a chat with that agent's skill in Claw.</td></tr>
++    <tr><td>Is my company code safe?</td><td>Models run locally via llama.cpp; Network Guard is set to Strict; vault note contents are gitignored. Nothing leaves the machine unless you push it somewhere yourself.</td></tr>
++    <tr><td>How does Cursor use this later?</td><td>A filesystem MCP server pointed at <code>02_processed/</code> gives Cursor read access to the curated knowledge. Config snippet is in the README.</td></tr>
++    <tr><td>Why is half the document in Dutch?</td><td>By design: business concepts in Dutch (with English translations on first use) for non-technical colleagues; technical terms stay in English for developers.</td></tr>
++    <tr><td>How does the wiki get more interlinked over time?</td><td>The Curator (Agent 5) audits documents on a schedule, inserts missing links, and puts missing documents and open questions on the backlog. See "Wiki loop".</td></tr>
++    <tr><td>Can I paste a work ticket and get help?</td><td>Yes — the Consultant (Agent 6) skill. It proposes a plan grounded in the knowledge base and explicitly lists what it doesn't know. Works in Msty chat, or in Cursor via the MCP server.</td></tr>
++    <tr><td>How does the KB stay current when code changes?</td><td>The Sentinel (Agent 8) runs weekly, compares git commits since its last check, writes a changelog, and flags stale documents with <code>#stale-doc</code> on the backlog. You update the raw note and re-process.</td></tr>
++    <tr><td>Who checks the Dutch?</td><td>Agent 7 (Linguist), in the pipeline after the Structurer. It fixes clear Dutch errors and enforces the Dutch/English protocol; uncertain cases get a TAAL callout.</td></tr>
++    <tr><td>Why markdown + Obsidian instead of HTML pages?</td><td>Markdown is the format the agents, RAG, and MCP all consume natively; Obsidian provides search, backlinks, and graph view for free. HTML can always be GENERATED from the markdown later (static site export) — the reverse direction is painful. Markdown stays the source of truth.</td></tr>
++  </table>
++</section>
++
++</main>
++
++<footer>RAGgamuffin — local-first knowledge pipeline. This file is self-contained; diagrams render via Mermaid (CDN).</footer>
++
++<script type="module">
++  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
++  mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "strict" });
++</script>
++
++</body>
++</html>
+diff --git a/vault/01_unprocessed/.gitkeep b/vault/01_unprocessed/.gitkeep
+new file mode 100644
+index 0000000..e69de29
+diff --git a/vault/02_processed/.gitkeep b/vault/02_processed/.gitkeep
+new file mode 100644
+index 0000000..e69de29
+diff --git a/vault/03_meta/backlog.md b/vault/03_meta/backlog.md
+new file mode 100644
+index 0000000..127d231
+--- /dev/null
++++ b/vault/03_meta/backlog.md
+@@ -0,0 +1,24 @@
++# Knowledge Base Backlog
++
++Master list of gaps found by Agent 4 (Critic) during processing, Agent 5
++(Curator) during wiki audits, Agent 6 (Consultant) during ticket triage, and
++Agent 8 (Sentinel) during weekly code diff checks.
++Entries are appended automatically; resolve them by writing/editing the raw
++note and dropping it into `01_unprocessed/`.
++
++Tags:
++
++- `#verify` — prose and code contradict each other; needs a human ruling
++- `#missing-info` — a concept/component is referenced but never explained
++- `#open-question` — unresolved question (from a raw note or a Curator audit)
++- `#missing-doc` — the wiki links to or relies on a document that does not exist yet
++- `#ticket-gap` — a real ticket exposed missing knowledge base content
++- `#stale-doc` — code changed since last Sentinel check; document may be outdated
++
++## Open
++
++<!-- pipeline appends entries below this line -->
++
++## Resolved
++
++<!-- move finished entries here, change - [ ] to - [x] -->
+diff --git a/vault/03_meta/sentinel-state.template.md b/vault/03_meta/sentinel-state.template.md
+new file mode 100644
+index 0000000..0d7e89d
+--- /dev/null
++++ b/vault/03_meta/sentinel-state.template.md
+@@ -0,0 +1,15 @@
++# Sentinel state (template)
++
++Copy this file to `sentinel-state.md` on first setup (same folder).
++`sentinel-state.md` is gitignored — it is machine-specific.
++
++```yaml
++last_commit: ""
++last_checked: ""
++code_repo: "/absolute/path/to/your/work/codebase"
++branch: "main"
++```
++
++The weekly `kb-sentinel-check` playbook reads and overwrites `sentinel-state.md`.
++Point `code_repo` at the application you document — usually NOT this RAGgamuffin
++repo itself, but the Laravel/project repo at work.
