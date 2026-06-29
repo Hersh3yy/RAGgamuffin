@@ -64,13 +64,22 @@ Keep the changelog metadata-only — never paste code diffs, env values, or secr
 
 ## STALE DOCUMENT DETECTION (backlog)
 
-After `=== BACKLOG ===`, one entry per document that should be reviewed or re-processed:
+After `=== BACKLOG ===`, output two groups of entries.
+
+**Group 1 — stale existing documents** (one entry per document that should be reviewed):
 
 - [ ] **<KB document title>** — Code changed: <files or area>. Commit <hash>. Re-process raw note or verify doc still accurate. `#stale-doc`
 
+**Group 2 — missing documents for new areas** (one entry per area that changed but has NO matching KB document):
+
+When DIFF_SUMMARY shows changed files in an area that has NO title match in KB_INDEX (by path, domain keyword, or commit message), add:
+
+- [ ] **<suggested note title>** — New area: <files or area that changed>. No KB document exists yet. Create a raw note and drop it into `01_unprocessed/` to generate an atom or molecule. `#missing-doc`
+
 Rules:
-- Only flag when there is a plausible link between changed files/commits and a KB document title or domain.
-- Maximum 10 entries. Most likely stale first.
+- Only flag `#stale-doc` when there is a plausible link between changed files/commits and a KB document title or domain.
+- Only flag `#missing-doc` when the changed area is genuinely new territory — not just a renamed file or minor config tweak.
+- Maximum 10 entries total across both groups. Stale docs first, then missing docs.
 - If COMMITS shows no new commits since last check, output changelog with "No new commits since last check" and omit `=== BACKLOG ===` entirely.
 - If this is the initial check (no previous commit in STATE), produce the changelog and omit backlog unless you can already match existing KB docs to recent commits.
 

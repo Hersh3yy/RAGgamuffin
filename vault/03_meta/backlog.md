@@ -14,6 +14,7 @@ Tags:
 - `#missing-doc` — the wiki links to or relies on a document that does not exist yet
 - `#ticket-gap` — a real ticket exposed missing knowledge base content
 - `#stale-doc` — code changed since last Sentinel check; document may be outdated
+- `#mis-tier` — Curator suspects the atom/molecule/organism classification is wrong; verify and correct frontmatter if so
 
 ## Open
 

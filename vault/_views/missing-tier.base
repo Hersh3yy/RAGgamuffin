@@ -1,0 +1,25 @@
+filters:
+  and:
+    - file.inFolder("02_wiki")
+    - or:
+        - not:
+            - file.hasProperty("tier")
+        - not:
+            - file.hasProperty("type")
+
+properties:
+  type:
+    displayName: Type
+  tier:
+    displayName: Tier
+  domain:
+    displayName: Domain
+  file.mtime:
+    displayName: Last modified
+
+views:
+  - type: table
+    name: Notes missing classification
+    order:
+      - file.name
+      - file.mtime

@@ -1,0 +1,29 @@
+filters:
+  and:
+    - file.inFolder("02_wiki")
+    - 'tier == "atom"'
+
+properties:
+  type:
+    displayName: Type
+  tier:
+    displayName: Tier
+  domain:
+    displayName: Domain
+  file.mtime:
+    displayName: Last modified
+
+views:
+  - type: table
+    name: Atoms by domain
+    groupBy:
+      property: domain
+      direction: ASC
+    order:
+      - type
+      - file.name
+      - file.mtime
+  - type: cards
+    name: Atom cards
+    order:
+      - file.name

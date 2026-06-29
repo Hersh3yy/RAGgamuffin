@@ -103,8 +103,10 @@ successful manual chat run). The ordered steps:
    reprocessing, and archiving prevents the watcher from re-triggering).
 
 Success criteria to state in the playbook: `02_wiki/<file>.md` exists,
-starts with `#`, contains `## Samenvatting`, contains at least one
-` ```mermaid ` block, and `01_unprocessed/` no longer contains the source file.
+starts with a `---` frontmatter block containing `type` and `tier` with
+allowed values (see Agent 2 definitions), is immediately followed by a `#` H1,
+contains `## Samenvatting`, contains at least one ` ```mermaid ` block, and
+`01_unprocessed/` no longer contains the source file.
 
 ## 6. Validate manually first
 
@@ -207,10 +209,22 @@ Usage in Msty:
    gaps that a real ticket exposed — the highest-value backlog entries you
    can get.
 
+**Two-axis retrieval framing (add this to your Knowledge Stack prompt or system
+prefix when configuring the Consultant persona in Msty):**
+
+> When asked "what is X?" or "what does X mean?", prefer documents with
+> `tier: atom` — they define exactly one thing without prerequisites.
+> When asked "how does X work end-to-end?" or "what is the flow for X?",
+> prefer documents with `tier: molecule` or `tier: organism` — they show how
+> atoms compose into workflows and features.
+> When asked about a specific business domain (e.g. financing, property),
+> filter to documents with the matching `domain` property.
+
 Usage in Cursor (the MCP route): with the filesystem MCP server pointed at
 `02_wiki/` (see README), paste a ticket into Cursor chat and instruct:
-"Consult the raggamuffin-kb knowledge base before answering; list missing
-information explicitly." Same effect, inside your IDE, with Cursor's models.
+"Consult the raggamuffin-kb knowledge base before answering. Prefer atom notes
+for definitions, molecule/organism notes for flows. List missing information
+explicitly." Same effect, inside your IDE, with Cursor's models.
 
 ## 11. Sentinel playbook (weekly code diff check)
 
@@ -246,6 +260,16 @@ Scheduling: weekly (e.g. Monday morning). Run manually after a big release.
 **Your workflow when `#stale-doc` appears:** find the archived raw note in
 `03_meta/archive/`, update it with what changed, copy back to
 `01_unprocessed/` — the pipeline re-processes and overwrites the wiki doc.
+
+**Your workflow when `#missing-doc` appears (new area):** write a raw note
+covering the new area, drop it into `01_unprocessed/`, and let the pipeline
+generate the first atom or molecule for that area automatically.
+
+**Changelogs in the wiki:** each Sentinel run writes a changelog to
+`03_meta/changelogs/<YYYY-MM-DD>.md`. Open `vault/_views/changelogs.base`
+in Obsidian to see the full history as a sortable table — useful when
+reviewing "what changed this week" before a planning session or in Cursor
+via MCP.
 
 ## Reprocessing (nudging) a note
 

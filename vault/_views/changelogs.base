@@ -1,0 +1,25 @@
+filters:
+  and:
+    - file.inFolder("03_meta/changelogs")
+
+properties:
+  file.name:
+    displayName: Date
+  file.mtime:
+    displayName: Last modified
+  file.size:
+    displayName: Size
+
+views:
+  - type: table
+    name: All changelogs
+    order:
+      - file.name
+    groupBy:
+      property: file.name
+      direction: DESC
+  - type: list
+    name: Recent changelogs
+    limit: 10
+    order:
+      - file.name

@@ -51,6 +51,8 @@ vault/          the Obsidian vault (open THIS folder as a vault in Obsidian)
   03_meta/
     archive/        raw originals after processing  (contents NOT committed)
     backlog.md, changelogs, logs, sentinel-state (templates committed)
+  _views/           Obsidian Bases templates + overview note (committed)
+  samples/          sample raw notes for smoke-testing the pipeline (committed)
 ```
 
 ## Privacy model: what git sees
@@ -85,6 +87,37 @@ NOT just flip the `.gitignore` and push company code to a personal GitHub.
 - Keep notes focused: one topic per note. Many small notes beat one epic
   (small local models have small context windows).
 - Check `vault/03_meta/backlog.md` periodically and resolve flagged gaps.
+
+## Wiki structure: atoms, molecules, organisms
+
+Every note in `02_wiki/` carries a YAML frontmatter block with three properties:
+
+```yaml
+---
+type: entity        # entity | process | integration | concept | reference
+tier: atom          # atom | molecule | organism
+domain: property    # free-form business area, e.g. financing, identity, admin
+---
+```
+
+**tier** is determined by the zero-prerequisite litmus: *"Can I understand this note without reading any other wiki note first?"*
+
+- `atom` — yes. Defines exactly ONE thing. Most notes are atoms.
+- `molecule` — composes 2-5 atoms; links explicitly to those atoms.
+- `organism` — a named business feature; composes molecules and atoms.
+
+### Interface A: browsing and maps (no code required)
+
+- **Graph view** (`Cmd/Ctrl+G`): the visual map of your knowledge. Atoms cluster at the leaves; organisms sit at the hubs. Use local graph on any note to see its immediate neighbourhood.
+- **Obsidian Bases** (`vault/_views/`): live Table and Card views of your notes sliced by `type`, `tier`, or `domain`. Enable the Bases core plugin under *Settings → Core plugins → Bases*, then open `vault/_views/overview.md` as your dashboard.
+  - `_views/atoms.base` — all atoms grouped by domain.
+  - `_views/by-tier.base` — the full inventory, grouped atom → molecule → organism.
+  - `_views/missing-tier.base` — notes that slipped through without classification.
+- **Mermaid diagrams**: every note with `type: process` or `type: integration` gets at least one flow diagram, inserted by Agent 3.
+
+### Interface B: chat and on-the-fly answers
+
+Build a Msty Knowledge Stack from `02_wiki/` and attach Agent 6 (Consultant). See [claw/playbook.md](claw/playbook.md) section 10. The two-axis frontmatter helps the Consultant distinguish "what is X?" (prefer atoms) from "how does X work end-to-end?" (prefer molecules/organisms).
 
 ## Future: MCP server for Cursor
 

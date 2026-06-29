@@ -2,6 +2,12 @@
 # RAGgamuffin privacy model:
 #   - The PIPELINE (prompts, docs, config) is committed.
 #   - The KNOWLEDGE (vault note contents) is NOT committed.
+#
+# Committed vault directories (pipeline structure, not knowledge):
+#   vault/samples/    — sample notes for smoke-testing the pipeline
+#   vault/_views/     — Obsidian Bases templates (.base files) and overview note
+#   vault/03_meta/backlog.md
+#   vault/03_meta/sentinel-state.template.md
 # ============================================================
 
 # Vault note contents stay local (privacy: may contain company code/notes).
@@ -12,6 +18,8 @@ vault/02_wiki/*
 !vault/02_wiki/.gitkeep
 vault/03_meta/archive/*
 !vault/03_meta/archive/.gitkeep
+vault/03_meta/changelogs/*
+!vault/03_meta/changelogs/.gitkeep
 
 # 03_meta: only the committed backlog template is tracked; everything else
 # (generated logs, scratch files) stays local.

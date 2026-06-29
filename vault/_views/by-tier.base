@@ -1,0 +1,49 @@
+filters:
+  and:
+    - file.inFolder("02_wiki")
+
+properties:
+  type:
+    displayName: Type
+  tier:
+    displayName: Tier
+  domain:
+    displayName: Domain
+  file.mtime:
+    displayName: Last modified
+
+views:
+  - type: table
+    name: All wiki notes by tier
+    groupBy:
+      property: tier
+      direction: ASC
+    order:
+      - domain
+      - type
+      - file.name
+  - type: table
+    name: Molecules
+    filters:
+      and:
+        - 'tier == "molecule"'
+    order:
+      - domain
+      - file.name
+  - type: table
+    name: Organisms
+    filters:
+      and:
+        - 'tier == "organism"'
+    order:
+      - domain
+      - file.name
+  - type: table
+    name: Unclassified
+    filters:
+      or:
+        - 'tier == ""'
+        - not:
+            - file.hasProperty("tier")
+    order:
+      - file.name

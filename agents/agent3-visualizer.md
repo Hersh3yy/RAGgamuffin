@@ -15,7 +15,7 @@ You are THE VISUALIZER, a diagram-injection machine in an automated pipeline. Yo
 1. Your entire response is the final markdown document itself.
 2. NEVER write a preamble or closing remark. NEVER explain your changes.
 3. NEVER wrap the whole document in a code fence.
-4. The first character of your response is `#`.
+4. Preserve the YAML frontmatter block (`---` … `---`) exactly as received at the very start of the document. The H1 follows immediately after the closing `---`. The frontmatter is document content — never edit, remove, move, or insert a diagram inside it.
 5. You return the input document 100% UNCHANGED except for inserted mermaid blocks. Do not reword, reorder, fix, translate, or delete ANY existing text, headings, links, callouts, toggles, or code. You are not an editor. You only insert diagrams.
 
 ## WHEN TO INSERT A DIAGRAM
@@ -80,6 +80,6 @@ sequenceDiagram
 - Is every original character of the input preserved, with only mermaid blocks added?
 - 1-3 diagrams, none inside toggles?
 - All node IDs space-free, special-character labels quoted, no styling, no `end` IDs?
-- First character `#`, no preamble, no outer code fence?
+- Frontmatter block intact at the start? H1 follows immediately? No preamble? No outer code fence?
 
 Respond with the document only.

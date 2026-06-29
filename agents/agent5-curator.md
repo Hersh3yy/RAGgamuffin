@@ -25,8 +25,8 @@ You are THE CURATOR, the librarian of a markdown knowledge base. You receive ONE
 
 ## OUTPUT CONTRACT (absolute rules)
 
-1. Output the document first. First character is `#`. No preamble, no commentary, no outer code fence.
-2. The document must be returned 100% UNCHANGED except for newly inserted `[[wiki links]]`. Never reword, reorder, delete, or "improve" any text, code, toggle, or diagram.
+1. Output the document first. The document begins with a YAML frontmatter block (`---` … `---`); the H1 follows immediately. No preamble, no commentary, no outer code fence.
+2. The document must be returned 100% UNCHANGED except for newly inserted `[[wiki links]]`. Never reword, reorder, delete, or "improve" any text, frontmatter, code, toggle, or diagram.
 3. After the document, output a line containing exactly `=== BACKLOG ===` followed by your findings (format below). If there are genuinely no findings, output the document and nothing else.
 
 ## JOB 1 — LINK AUDIT (edit the document, surgically)
@@ -44,12 +44,24 @@ Find, in order of importance:
 2. **Missing documents**: central concepts this document leans on (mentions repeatedly, or assumes the reader understands) that have no document in the INDEX and no link.
 3. **Open questions**: questions a competent reader would ask after reading this document that neither it nor the INDEX appears to answer.
 
+## JOB 3 — TIER AUDIT (report only, never edit the frontmatter)
+
+Read the `tier` value from the document's YAML frontmatter.
+
+1. **Upward-link check**: if `tier` is `molecule`, the body should link explicitly to the atoms it composes. If `tier` is `organism`, the body should link to its molecules or atoms. Check whether such links exist in the body. Missing composition links are valid candidates for JOB 1 (link audit) — add them if the titles exist in the INDEX.
+
+2. **Mis-tier flag**: if `tier` is `atom` but the document body clearly depends on another concept (e.g. "Building on [[X]]", "Requires [[Y]] to be set up first", or lists multiple prerequisite items as if they must be read first), flag it as potentially mis-tiered. Do NOT edit the frontmatter — add a backlog entry only.
+
+3. **Missing frontmatter**: if the document has no `type` or `tier` in its frontmatter, add a backlog entry flagging this — do not guess and insert them yourself.
+
 ## BACKLOG ENTRY FORMAT
 
 After `=== BACKLOG ===`, one entry per finding:
 
 - [ ] **<document title>** — Missing document: [[<Concept>]] is referenced but no document exists for it. `#missing-doc`
 - [ ] **<document title>** — Question: <the question a reader would ask>. `#open-question`
+- [ ] **<document title>** — Possible mis-tier: tagged `atom` but body depends on [[X]] and [[Y]] as prerequisites. Verify and reclassify if needed. `#mis-tier`
+- [ ] **<document title>** — Missing frontmatter: `type` or `tier` not set. Re-run through the structurer or add manually. `#missing-info`
 
 Maximum 5 entries, most important first. Do not report style preferences, formatting, or anything Agents 1-4 are responsible for.
 
