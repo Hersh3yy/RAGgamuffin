@@ -1,5 +1,45 @@
 # RAGgamuffin
 
+A local-first knowledge base for a codebase you have to learn: one page per
+business concept, pinned to the code by verified anchors, updated by upsert,
+validated against the repo, reviewed by a human once a week.
+
+> **Current pipeline (since 2026-10-15):** `ingest.py`, `validate.py`, `kb.json`,
+> and the Claude Code skill `/ingest-inbox`. Read `PROJECT.md` for the design and
+> `docs/msty-setup.md` to use Msty Studio as the chat front. Everything below this
+> box describes the original 2026-06 five-agent design; its prompts in `agents/`
+> and the Claw playbook in `claw/` are kept as reference and are no longer the
+> path that produces pages.
+
+## Weekly loop
+
+1. While you work, ask any LLM for a summary of what you learned and save it as
+   `.md` in `vault/01_unprocessed/`.
+2. Thursday, in Claude Code inside this folder: `/ingest-inbox`. It sizes the
+   run and asks before spending, reads the concept index, upserts each file into
+   `vault/concepts/`, validates pages against the code, and writes
+   `vault/03_meta/reviews/<date>.md`.
+3. Open the vault in Obsidian, `_views/concepts.base`, "Needs attention first".
+   Delete junk with `python3 ingest.py --reject <slug>`; it never comes back.
+4. Ask questions in Msty Studio with the `Portal Guide` persona (see docs).
+
+Sources never move: `~/Herd/documentation` stays where it is and the inbox is
+archived after ingest. The ledger (`vault/03_meta/ledger.json`) knows what was
+processed by content hash, so nothing is scanned twice and an edited source is
+re-ingested on its own.
+
+## Portable
+
+`kb.json` is committed and points at this project's vault, sources and code
+repo. `kb.local.json` (ignored) holds the machine's Ollama URL and model; copy
+`kb.local.example.json` on a new Mac. Another project gets its own `kb.json`
+and its own vault. The vault contents are never committed to this repo.
+
+---
+
+# Original design (2026-06), kept for reference
+
+
 A local-first, multi-agent pipeline that turns raw, messy coding notes into a
 pristine, structured Obsidian knowledge base — running entirely on local
 models (llama.cpp via Msty / Msty Claw). No data leaves your machine.
@@ -15,29 +55,35 @@ models (llama.cpp via Msty / Msty Claw). No data leaves your machine.
 ```mermaid
 flowchart LR
     rawNote["Raw note in 01_unprocessed"] --> watcher["Claw watcher task"]
-    watcher --> a1["Agent 1: Verifier"]
-    a1 --> a2["Agent 2: Structurer"]
+    watcher --> idx["Scan 02_wiki -> KB_INDEX"]
+    idx --> a1["Agent 1: Verifier"]
+    a1 --> a2["Agent 2: Structurer + INDEX"]
     a2 --> a3["Agent 3: Visualizer"]
-    a3 --> a4["Agent 4: Critic"]
+    a3 --> a4["Agent 4: Critic + INDEX"]
     a4 -->|"final doc"| wiki["02_wiki"]
+    wiki --> a5["Agent 5: Curator + INDEX (placer)"]
+    a5 -->|"links + backlog"| wiki
     a4 -->|"gaps"| backlog["03_meta/backlog.md"]
-    processed -.->|"future: MCP server"| cursorIDE["Cursor"]
+    a5 -->|"enrich gaps"| backlog
+    wiki -.->|"future: MCP server"| cursorIDE["Cursor"]
 ```
 
 | Agent | Job | Prompt |
 |---|---|---|
 | 1 Verifier | Fact-checks prose against the code in the note; flags contradictions with callouts | [agents/agent1-verifier.md](agents/agent1-verifier.md) |
-| 2 Structurer | Business logic first, code hidden in `<details>` toggles, optional Dutch/English protocol, `[[wiki links]]` | [agents/agent2-structurer.md](agents/agent2-structurer.md) |
+| 2 Structurer | Business logic first, code hidden in `<details>` toggles, English prose, `## Composition` for molecules/organisms (INDEX-aware) | [agents/agent2-structurer.md](agents/agent2-structurer.md) |
 | 3 Visualizer | Injects Obsidian-safe Mermaid diagrams, changes nothing else | [agents/agent3-visualizer.md](agents/agent3-visualizer.md) |
-| 4 Critic | Final QA gate; repairs mechanical defects, writes the doc, logs gaps to the backlog | [agents/agent4-critic.md](agents/agent4-critic.md) |
-| 5 Curator | Scheduled wiki gardener: adds missing links, reports missing documents and reader questions | [agents/agent5-curator.md](agents/agent5-curator.md) |
+| 4 Critic | Final QA gate; repairs mechanical defects, writes the doc, logs enrichment-shaped gaps to the backlog | [agents/agent4-critic.md](agents/agent4-critic.md) |
+| 5 Curator | Runs twice: hot-path placer (per new note, adds outbound `[[links]]`) + weekly full-wiki sweep | [agents/agent5-curator.md](agents/agent5-curator.md) |
 | 6 Consultant | Interactive ticket triage: paste a ticket, get a KB-grounded plan plus an explicit missing-info list | [agents/agent6-consultant.md](agents/agent6-consultant.md) |
 | 8 Sentinel | Weekly git diff check: changelog since last commit, flags stale KB documents | [agents/agent8-sentinel.md](agents/agent8-sentinel.md) |
 
-Agents 1-4 form the lean per-note hot path (runs on every file drop). The
-Curator and Sentinel run on weekly schedules (separate playbooks, zero per-note
-latency). The Consultant is a chat skill you talk to directly — in Msty with a
-Knowledge Stack, or in Cursor via MCP.
+Agents 1-5 form the per-note hot path (runs on every file drop). Every run
+rescans `02_wiki/` into a `KB_INDEX` that Agents 2, 4, and 5 use to place the
+new note in the graph (outbound `[[links]]`, Composition suggestions,
+enrichment-shaped backlog). Inbound-mesh sweeps across older notes stay in the
+weekly `kb-curate` playbook. The Consultant is a chat skill you talk to
+directly — in Msty with a Knowledge Stack, or in Cursor via MCP.
 
 ## Repo layout
 
@@ -103,8 +149,29 @@ domain: property    # free-form business area, e.g. financing, identity, admin
 **tier** is determined by the zero-prerequisite litmus: *"Can I understand this note without reading any other wiki note first?"*
 
 - `atom` — yes. Defines exactly ONE thing. Most notes are atoms.
-- `molecule` — composes 2-5 atoms; links explicitly to those atoms.
-- `organism` — a named business feature; composes molecules and atoms.
+- `molecule` — composes 2-5 atoms; ships a `## Composition` section listing them.
+- `organism` — a named business feature; composes molecules and atoms; also ships a `## Composition` section.
+
+### Composition, suggestions, and the backlog
+
+Every ingest rescans `02_wiki/` to build a `KB_INDEX`. The Structurer uses it
+to fill the `## Composition` section on molecules/organisms:
+
+- Dependencies that already have a wiki page → `[[stem|Name]]` links.
+- Dependencies that don't → plain text with a `(suggested)` marker; the
+  Critic and Curator then log a backlog entry so the missing page gets
+  written.
+
+Backlog entries follow a three-part shape so you know why to read/write
+something AND which existing articles it would enrich:
+
+```
+- [ ] **<topic to look up>** — <why to look it up> — enriches: `02_wiki/<stem>.md` #<tag>
+```
+
+The hot-path Curator only edits the note it just placed. Inbound-mesh sweeps
+(adding `[[links]]` from older notes to the new one) happen in the weekly
+`kb-curate` playbook.
 
 ### Interface A: browsing and maps (no code required)
 

@@ -52,6 +52,16 @@ flowchart TD
 
 ---
 
+## Pipeline health (daily logs)
+
+One row per day the pipeline ran, most recent first. Empty table means the
+pipeline hasn't logged a run yet — check Claw's Activity tab for live status
+while a run is in progress.
+
+![[pipeline-runs.base#Pipeline health by day]]
+
+---
+
 ## Weekly changelogs (Sentinel)
 
 Each weekly Sentinel run writes a changelog to `03_meta/changelogs/`. Use this

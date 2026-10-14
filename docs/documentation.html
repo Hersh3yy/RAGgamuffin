@@ -390,7 +390,7 @@ flowchart TD
   <table>
     <tr><th>Route</th><th>How</th><th>Best for</th></tr>
     <tr><td><strong>Msty Knowledge Stack</strong></td><td>In Msty: Knowledge Stacks &rarr; new stack pointed at <code>&lt;REPO&gt;/vault/02_wiki/</code>. Open a chat, pick your heavy local model, attach the stack, ask away. This is exactly what the Consultant (Agent 6) uses.</td><td>Staying in the Msty ecosystem; ticket triage</td></tr>
-    <tr><td><strong>Obsidian plugin</strong></td><td>Install the <em>Smart Connections</em> or <em>Text Generator</em> community plugin. Point its endpoint at the local llama.cpp server Msty already runs (e.g. <code>http://localhost:8080</code>). You get a chat sidebar next to your notes.</td><td>Never leaving the Obsidian window</td></tr>
+    <tr><td><strong>Obsidian plugin</strong></td><td>Install the <em>Smart Connections</em> or <em>Text Generator</em> community plugin. Point its endpoint at the local server Msty already runs (Settings &gt; Local AI for the exact port — default <code>http://localhost:10000/v1</code>). You get a chat sidebar next to your notes.</td><td>Never leaving the Obsidian window</td></tr>
   </table>
   <p>Both are 100% offline once the model is downloaded — same as running your DAW with no internet. Re-point/re-sync the Knowledge Stack as the vault grows.</p>
 </section>
@@ -412,7 +412,7 @@ flowchart LR
   <p class="diagram-caption">Setup order matters: security before skills, manual runs before automation.</p>
 
   <ol class="checklist">
-    <li><strong>Providers:</strong> Settings &gt; Providers — confirm your llama.cpp models (Gemma/Qwen) appear. Give your strongest model to Agent 1.</li>
+    <li><strong>Providers:</strong> Settings &gt; Providers — confirm your llama.cpp models (Gemma/Qwen) appear. <strong>Day 1: use ONE model for all seven skills</strong> — don't split per agent yet, only <code>temperature</code>/<code>top_p</code> differ per skill. Split models later if a specific agent (usually Agent 1) struggles with the shared one. If you want that same model reachable outside Claw (Cursor, a terminal tool), copy its endpoint from Settings &gt; Local AI — Msty's default is <code>http://localhost:10000/v1</code>; the KB pipeline itself never needs this URL.</li>
     <li><strong>Bot:</strong> Settings &gt; Bots — one bot. Workspace = Project folder pointed at <code>&lt;REPO&gt;/vault</code>. Runtime = Host. Routing = Local only.</li>
     <li><strong>Security:</strong> Settings &gt; Security — Allowed Folders: only <code>&lt;REPO&gt;/vault</code> (read/write). Network Guard: Strict. Approvals: on. Do this <em>before</em> the first run, especially at work.</li>
     <li><strong>Skills:</strong> Settings &gt; Agent Mode &gt; Skills Studio — create folder <code>kb-pipeline</code>, create 7 skills (verifier, structurer, visualizer, critic, curator, consultant, sentinel), paste each prompt from the repo's <code>agents/</code> files. System prompt mode: Replace.</li>
@@ -431,15 +431,27 @@ flowchart LR
   </div>
 
   <h3>Where and what</h3>
-  <p>One file per day: <code>vault/03_meta/logs/2026-06-11.md</code>. One short block per pipeline run, appended by the playbook:</p>
+  <p>One file per day: <code>vault/03_meta/logs/2026-06-11.md</code>. The file opens with a tiny frontmatter health summary (kept up to date by the playbook), followed by one short block per pipeline run:</p>
 
-  <pre class="codeblock">## 14:32 — stock-sync-debounce.md
+  <pre class="codeblock">---
+date: 2026-06-11
+runs: 3
+success: 3
+failed: 0
+backlog_added: 5
+last_run: "14:32"
+---
+
+## 14:32 — stock-sync-debounce.md
 - result: success
 - output: 02_wiki/stock-sync-debounce.md
 - agents: verifier ok | structurer ok | visualizer ok | critic ok
 - backlog: +2 entries
 - duration: ~4 min
 - source: archived</pre>
+
+  <h3>Seeing the pipeline at work, visually</h3>
+  <p><strong>Live, right now:</strong> Claw's own Activity tab shows every running/finished playbook step in real time — open it while a run is in progress, no setup needed. <strong>Trend over days:</strong> <code>vault/_views/pipeline-runs.base</code> turns the frontmatter above into a sortable table (open <code>vault/_views/overview.md</code> in Obsidian) — one row per day, most recent first, so you can spot pipeline health without reading a single log entry.</p>
 
   <pre class="mermaid">
 flowchart TD

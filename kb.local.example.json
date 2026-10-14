@@ -1,0 +1,1 @@
+{ "ollama": "http://127.0.0.1:11434", "model": "granite4.2:8b", "ctx": 4096 }

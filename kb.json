@@ -1,0 +1,10 @@
+{
+  "project": "portal.mogelijk.nl",
+  "vault": "./vault",
+  "sources": ["~/Herd/documentation"],
+  "inbox": "./vault/01_unprocessed",
+  "archive": "./vault/03_meta/archive",
+  "code_repo": "~/Herd/portal.mogelijk.nl",
+  "code_globs": ["*.php", "*.graphql", "*.js", "*.ts", "*.vue", "*.blade.php", "*.json", "*.yml"],
+  "domains": ["signings", "financing", "identity", "property", "admin", "meta"]
+}

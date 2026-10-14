@@ -16,16 +16,25 @@ vault/01_unprocessed/*
 !vault/01_unprocessed/.gitkeep
 vault/02_wiki/*
 !vault/02_wiki/.gitkeep
+
+# 03_meta: only committed pipeline scaffolding is tracked; everything else
+# (archived notes, changelogs, logs, machine-specific state) stays local.
+# NOTE: the blanket rule below ignores subfolders too, so each subfolder must
+# be explicitly un-ignored (trailing slash) BEFORE its own contents can be
+# re-ignored except for .gitkeep — un-ignoring a file inside an already
+# ignored directory does not work in gitignore.
+vault/03_meta/*
+!vault/03_meta/backlog.md
+!vault/03_meta/sentinel-state.template.md
+!vault/03_meta/archive/
+!vault/03_meta/changelogs/
+!vault/03_meta/logs/
 vault/03_meta/archive/*
 !vault/03_meta/archive/.gitkeep
 vault/03_meta/changelogs/*
 !vault/03_meta/changelogs/.gitkeep
-
-# 03_meta: only the committed backlog template is tracked; everything else
-# (generated logs, scratch files) stays local.
-vault/03_meta/*
-!vault/03_meta/backlog.md
-!vault/03_meta/sentinel-state.template.md
+vault/03_meta/logs/*
+!vault/03_meta/logs/.gitkeep
 
 # Obsidian machine-specific state (workspace layout, cache, plugin data).
 # If you ever want to sync Obsidian *settings* across machines, selectively
@@ -40,3 +49,13 @@ Thumbs.db
 # Msty Claw local artifacts (if it ever writes state into the workspace)
 .claw/
 *.log
+
+# ---- knowledge stays local (added 2026-10-15, concept-index) ----
+vault/concepts/
+vault/_bench/
+vault/03_meta/ledger.json
+vault/03_meta/aliases.json
+vault/03_meta/anchors.json
+vault/03_meta/reviews/
+vault/*.md
+kb.local.json

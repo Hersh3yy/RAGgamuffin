@@ -10,7 +10,7 @@
 
 **What it is** · A pipeline that was meant to turn Hiren's portal.mogelijk.nl docs into a concept-level Obsidian knowledge base. Today it is a set of agent prompts plus one lossy 1:1 rewrite of 24 docs.
 **Stack** · Markdown prompts (`agents/`), Obsidian vault (`vault/`), Msty Claw playbook (`claw/`), Ollama models on disk. No application code.
-**Status** · 🟡 rough — the concept-index rebuild started 2026-09-18 and runs locally end to end; the old 5-agent relay is superseded but not yet removed — the design premise does not match the input, the local pipeline never ran (Claw was pointed at an MLX service that was never installed), and the wiki output is a worse copy of its sources. Hard constraints from Hiren (2026-09-16/17): local models only, no cloud; budget this M1 Pro as a 20 GB machine; the second machine is a fanless M5 Air with 16 GB. So models must fit in roughly 12 GB with context on both.
+**Status** · 🟡 rough — upsert pipeline + validator + `/ingest-inbox` skill built 2026-10-15 on branch `concept-index`; first live Thursday run pending; old 5-agent relay superseded, kept in `agents/` and `claw/` as reference — the design premise does not match the input, the local pipeline never ran (Claw was pointed at an MLX service that was never installed), and the wiki output is a worse copy of its sources. Hard constraints from Hiren (2026-09-16/17): local models only, no cloud; budget this M1 Pro as a 20 GB machine; the second machine is a fanless M5 Air with 16 GB. So models must fit in roughly 12 GB with context on both.
 **Repo** · git@github.com:Hersh3yy/RAGgamuffin.git · trunk is `master` (no `main`); 10 files modified and 13 untracked (23 dirty entries) since the last commit on 2026-06-29. The concept-index redesign was built directly on `master` and sits there uncommitted, not on the planned `concept-index` branch. Nothing is committed yet; the output is not yet judged good enough in Obsidian to merge.
 **Hosting** · Local only. Vault opened in Obsidian from `vault/`. Source docs live outside the repo in `~/Herd/documentation`.
 **ClickUp** · not linked
@@ -23,12 +23,17 @@
 There is nothing to build or test. "Running" means opening the vault and, in theory, triggering the pipeline.
 
 ```bash
-python3 ingest.py --status                    # which source docs are new / changed / already done
-python3 ingest.py --all                       # ingest everything pending (local model, no cloud)
-python3 ingest.py --source ~/Herd/documentation/sepa-mandate-system.md
-python3 bench.py                              # model bake-off, writes vault/_bench/<date>/report.md
-open -a Obsidian /Users/hirenbudhrani/Herd/RAGgamuffin/vault
+python3 ingest.py --status          # NEW / CHANGED / done, for ~/Herd/documentation and the inbox
+python3 ingest.py --index           # JSON of known concepts + aliases + rejected (what the model reads first)
+python3 ingest.py --from-json out.json --source vault/01_unprocessed/x.md   # the upsert (Thursday path)
+python3 ingest.py --local --source FILE        # weaker preview with the local model in kb.local.json
+python3 ingest.py --reject SLUG     # delete a junk page; it can never come back
+python3 validate.py                 # anchors still exist? files drifted since last run? (free)
+python3 bench.py                    # model bake-off, vault/_bench/<date>/report.md
+# Thursday, inside Claude Code in this folder:  /ingest-inbox
+open -a Obsidian /Users/hirenbudhrani/Herd/RAGgamuffin/vault   # then _views/concepts.base, "Needs attention first"
 ```
+Config: `kb.json` (per project, committed: vault, sources, inbox, code_repo, domains) + `kb.local.json` (per machine, ignored: ollama url, model, ctx). Copy `kb.local.example.json` on a new machine.
 
 Local inference on this machine (M1 Pro, 32 GB), measured 2026-09-16:
 
@@ -83,6 +88,17 @@ Three folders matter.
 Domain words to keep: `atom` / `molecule` / `organism` (tier, by the zero-prerequisite litmus), `KB_INDEX` (the per-run inventory of the wiki), `hot path` (per-note run) vs `weekly crew` (curator and sentinel sweeps), `enriches:` (the backlog pointer to existing articles).
 
 The actual knowledge is not in this repo. It lives in `~/Herd/documentation` (30 docs, growing) and is grounded in `~/Herd/portal.mogelijk.nl`. This repo should index that knowledge, not copy it.
+
+### How a document becomes knowledge (2026-10-15 design)
+
+One page per concept, forever. Key = slug. A document that mentions a known concept UPDATES that page.
+
+- **Judgment** (which concepts, the merged body, the diagram): the model. Claude inside Claude Code on Thursday via `/ingest-inbox`; a local model as a weaker preview via `--local`. It hands `ingest.py` a JSON file.
+- **Rules** (slug resolution, aliases, anchor verification against the source text AND the repo via `git grep`, rejected list, Mermaid validation, frontmatter, changelog, ledger, archive, review note): `ingest.py`. The model cannot bypass any of it.
+- Identity has three layers so a duplicate cannot slip in: the slug the model picked (must exist), the alias table `03_meta/aliases.json` (grows every run), and a normalised match (stopwords and a small Dutch-English table stripped). The canonical NAME is sticky; a second source calling it something else adds an alias, not a rename.
+- The page body is a pure function of state in `ledger.json["pages"]`. Hand edits to a page survive only if the model carries them into the next merge, which it does because it reads the page before writing the merged body.
+- `validate.py` runs before ingest every week, free: level 1 every anchor still exists in the repo; level 2 `git diff --name-only <last>..HEAD` marks pages whose anchored files changed as `stale`. Level 3, a model re-reading a stale page against current code, is capped at 5 pages per week inside the skill.
+- `concepts/index.md` and `concepts/log.md` are regenerated every run so the vault is a Karpathy-pattern wiki and `/understand-knowledge vault` can render it as an interactive graph.
 
 ### The ledger, and why the inbox folder goes away
 
@@ -142,15 +158,20 @@ and an edited source is picked up automatically.
 
 Proposed split: the first two are small and safe and can be done in one sitting once green-lit; the rest is the real work.
 
-- [ ] Housekeeping: gitignore `vault/*.md`, delete `diff.txt`, note the trunk branch and agent numbering in README, commit the 20 July prompt edits so the tree is clean <!-- id:n1 -->
+- [x] Housekeeping: gitignore `vault/*.md`, delete `diff.txt`, note the trunk branch and agent numbering in README, commit the 20 July prompt edits so the tree is clean <!-- id:n1 -->
 - [ ] Local runtime, no cloud: Msty Claw can take a provider of type `ollama` (schema allows anthropic/openai/openrouter/ollama/mlx) pointed at the running Ollama on 11434, replacing the dead MLX provider; Msty Studio Split Chat with duplication mode for quick side-by-side looks; Claude Code on Ollama as fallback harness. Flip Msty llama.cpp to Metal, raise `Num ctx` to 32k. <!-- id:n7 -->
 - [ ] Decide the fate of the 5-agent relay and the Claw playbook: retire or keep as reference in `docs/legacy/` <!-- id:n2 -->
 - [x] Prototype the concept index on three sources (signings technical reference, SEPA mandate system, one GoCredible doc): extract concepts to JSON with definition, verbatim code anchors, source sections, related concepts; render to `vault/concepts/<slug>.md` with a script that appends when the concept exists. Judge in Obsidian before going wider. <!-- id:n3 -->
-- [ ] Raise grounding: today only 4 of 13 concepts carry an anchor, because the model puts prose in the anchor field and the shape filter drops it. Better: after the model names a concept, find its anchors deterministically from the backticked identifiers in the chunk it came from, instead of asking the model for them <!-- id:n10 -->
+- [x] Raise grounding: today only 4 of 13 concepts carry an anchor, because the model puts prose in the anchor field and the shape filter drops it. Better: after the model names a concept, find its anchors deterministically from the backticked identifiers in the chunk it came from, instead of asking the model for them <!-- id:n10 -->
 - [ ] Improve concept quality: stop section titles becoming concepts, make `kind` meaningful, dedupe near-identical concepts across sources. Prompt work plus a better model; run `bench.py` over the extraction task once the three missing models are downloaded <!-- id:n9 -->
-- [ ] Make `~/Herd/documentation` the single source: pull it into the vault verbatim (copy or symlink) and drop `03_meta/archive/` and the paraphrased `02_wiki/` once the concept pages cover them <!-- id:n4 -->
+- [x] Make `~/Herd/documentation` the single source: pull it into the vault verbatim (copy or symlink) and drop `03_meta/archive/` and the paraphrased `02_wiki/` once the concept pages cover them <!-- id:n4 -->
 - [ ] Deterministic anchor check: a script that greps every cited path and class in the concept pages against `~/Herd/portal.mogelijk.nl` and flags misses as `#stale` backlog entries <!-- id:n5 -->
 - [ ] Run the extraction over all 30 docs with the chosen local model, rebuild the backlog from the graph (concepts cited by 2+ docs with no definition become `#write-doc`) <!-- id:n6 -->
+
+- [ ] First live Thursday run with Hiren present: `/ingest-inbox` on whatever is in the inbox, then he reviews `03_meta/reviews/<date>.md` in Obsidian and rejects junk <!-- id:n11 -->
+- [ ] Flip `Hersh3yy/RAGgamuffin` to private BEFORE any push (`backlog.md` with portal internals has been public since 06-29) and pick a vault sync (private git repo recommended) <!-- id:n12 -->
+- [ ] Msty Studio as the mouth: follow `docs/msty-setup.md`; step 1 (Msty Remote at 11434) needs one click to verify <!-- id:n13 -->
+- [ ] Refresh the portal `.ua` graph incrementally (last build 2026-08-17) so anchor checks can use it instead of grep <!-- id:n14 -->
 
 ## Roadmap — far future
 
@@ -169,6 +190,14 @@ Proposed split: the first two are small and safe and can be done in one sitting 
 ## Diary
 
 <!-- Newest first. One entry per working session. Terse, factual, honest. Append only. -->
+
+### 2026-10-15 — GO: upsert pipeline, validator, skill; branch `concept-index`
+- Hiren's requirements this session: living Jarvis-type system; human in the loop on cost; he drops LLM summaries into the inbox while working; Thursday night Claude Code processes them; local/cheap models for query; upsert semantics (second SEPA doc updates the one SEPA page, never duplicates); KB must occasionally validate itself against the code; visual-first pages because he learns visually; Msty Studio as the chat front; portable to the M5 Air and to other projects.
+- Built: `ingest.py` v2 (`--index`, `--from-json` upsert, aliases, rejected list, anchor locate via `git grep`, Mermaid validator, new page template, `index.md`/`log.md`, review notes, archive move, `--local` preview), `validate.py` (levels 1 and 2), skill `~/.claude/skills/ingest-inbox/SKILL.md` (phases: size and cost gate, index, per-file upsert, validate + level 3 capped at 5, hand-over), `kb.json` + `kb.local.json` config, `vault/_views/concepts.base`, `docs/msty-setup.md`.
+- Dry run with hand-written JSON: two overlapping SEPA summaries became ONE page; "SEPA machtiging" resolved to the existing slug through the alias table; anchors located to real portal files (`app/Modules/Properties/Signing/Services/SepaMandateService.php`, `app/Modules/Documents/Enums/SignableDocumentType.php`); a prose "anchor" was dropped; conflict rendered as a callout; inbox file archived; review note written. `validate.py` flagged an injected ghost anchor as `dead-anchor`. `--reject` kept the page from being recreated.
+- Housekeeping done: branch `concept-index`, `diff.txt` removed from the index, vault knowledge gitignored (`concepts/`, `_bench/`, ledger, aliases, reviews, root notes), `kb.local.json` ignored.
+- Decisions recorded, still Hiren's: repo is PUBLIC and must flip private before any push; vault sync method; Thursday = cloud via Claude Code (assumed yes).
+- Not done: real `/ingest-inbox` run (needs him present for the cost gate); Msty clicks; model downloads.
 
 ### 2026-10-14 — reassessment; no change since the 09-18 build
 - Update-mode pass, no app code touched. Nothing in the tree is newer than 2026-09-18; the concept-index pipeline built that day is exactly as it was left.

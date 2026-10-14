@@ -1,0 +1,49 @@
+filters:
+  and:
+    - file.inFolder("concepts")
+    - file.name != "index"
+    - file.name != "log"
+
+properties:
+  kind:
+    displayName: Kind
+  domain:
+    displayName: Domain
+  status:
+    displayName: Status
+  validated:
+    displayName: Validated
+  updated:
+    displayName: Updated
+  sources:
+    displayName: Sources
+
+views:
+  - type: table
+    name: Needs attention first
+    order:
+      - status
+      - validated
+      - file.name
+  - type: table
+    name: By domain
+    groupBy:
+      property: domain
+      direction: ASC
+    order:
+      - kind
+      - file.name
+  - type: table
+    name: Conflicts and stale
+    filters:
+      or:
+        - 'status == "conflict"'
+        - 'status == "stale"'
+        - 'status == "dead-anchor"'
+    order:
+      - validated
+  - type: cards
+    name: Cards by kind
+    groupBy:
+      property: kind
+      direction: ASC

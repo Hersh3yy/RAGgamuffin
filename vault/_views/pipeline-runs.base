@@ -1,0 +1,36 @@
+filters:
+  and:
+    - file.inFolder("03_meta/logs")
+
+properties:
+  date:
+    displayName: Date
+  runs:
+    displayName: Runs
+  success:
+    displayName: OK
+  failed:
+    displayName: Failed
+  backlog_added:
+    displayName: Backlog +
+  last_run:
+    displayName: Last run
+
+views:
+  - type: table
+    name: Pipeline health by day
+    order:
+      - date
+      - runs
+      - success
+      - failed
+      - backlog_added
+      - last_run
+    groupBy:
+      property: date
+      direction: DESC
+  - type: list
+    name: Recent days
+    limit: 14
+    order:
+      - date

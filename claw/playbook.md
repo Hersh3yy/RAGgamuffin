@@ -3,11 +3,14 @@
 Step-by-step configuration to chain the agents into an automated pipeline.
 
 Two tiers (see the Task wiring summary at the end):
-- HOT PATH (per note, runs instantly on file drop): Agents 1-4 —
-  Verifier -> Structurer -> Visualizer -> Critic.
-- OUT-OF-BAND (no per-note latency): Agent 5 (Curator, weekly, section 9),
-  Agent 6 (Consultant, interactive chat, section 10), Agent 8 (Sentinel,
-  weekly, section 11).
+- HOT PATH (per note, runs instantly on file drop): Agents 1-5 —
+  Verifier -> Structurer -> Visualizer -> Critic -> Curator (placer).
+  Every run rescans `02_wiki/` to build a `KB_INDEX` so the new note is
+  placed in the graph (outbound `[[links]]`, `## Composition` suggestions,
+  enrichment-shaped backlog).
+- OUT-OF-BAND (no per-note latency): Agent 5 (Curator, weekly full-wiki
+  sweep, section 9), Agent 6 (Consultant, interactive chat, section 10),
+  Agent 8 (Sentinel, weekly, section 11).
 
 Follow the steps in order; do not enable the watcher (step 7) until manual
 runs (step 6) produce correct output.
@@ -26,7 +29,16 @@ this repo; the KB pipeline does not write to it.
 Settings > Providers:
 
 - Confirm your llama.cpp models (Gemma / Qwen) are listed and selectable.
-- Suggested assignment:
+
+**Day 1 — one model for everything.** Don't split models per agent yet. Pick
+the single model you trust most (the biggest one your machine runs
+comfortably) and use it for all seven skills below. Only `temperature`/`top_p`
+differ per skill (table below) — the model itself can be identical
+everywhere. Split models apart later, once the pipeline runs cleanly and you
+notice a specific agent actually struggling with the shared model (Agent 1
+Verifier is the most likely candidate to outgrow a small model first).
+
+- Suggested assignment (for later, once you're ready to split models):
   - Agent 1 (Verifier): your strongest reasoning model (e.g. Qwen) — fact-checking is the hardest job.
   - Agents 2, 3, 4: any instruction-following model; formatting fidelity matters more than raw intelligence.
   - Agent 6 (Consultant): strongest model you have; it reasons and plans.
@@ -45,6 +57,15 @@ Settings > Providers:
 
 Set repeat_penalty ~1.1 if available. Give each agent the largest context window
 your hardware allows — a note plus a structured rewrite can be long.
+
+**Finding your local endpoint** (only needed if you want the SAME model
+available OUTSIDE Claw — e.g. in Cursor as an OpenAI-compatible provider, a
+terminal AI tool, or the Obsidian AI plugin). The KB pipeline itself never
+needs this URL; Claw skills call the model directly, no endpoint required.
+Settings > Local AI (or MLX / Llama.cpp Service, whichever engine hosts your
+model) shows the service's health, port, and endpoint — Msty's default is
+`http://localhost:10000/v1`. Copy that value if another app asks for a base
+URL/endpoint.
 
 ## 2. Bot
 
@@ -88,25 +109,57 @@ Create a playbook `kb-process-note` (custom authoring, or teach-mode from a
 successful manual chat run). The ordered steps:
 
 1. **Input**: list `01_unprocessed/`, pick the OLDEST `.md` file. If the folder is empty, stop. Process exactly ONE file per run — never batch (small models + long contexts = garbage output).
-2. **Agent 1**: run skill `kb-verifier` with the raw file content as input. Capture output.
-3. **Agent 2**: run skill `kb-structurer` with Agent 1's output as input. Capture output.
-4. **Agent 3**: run skill `kb-visualizer` with Agent 2's output as input. Capture output.
-5. **Agent 4**: run skill `kb-critic` with Agent 3's output as input.
-6. **Write results**:
+2. **Build KB_INDEX**: scan every `.md` file in `02_wiki/` and produce a
+   deterministic index (no model needed). One line per note, format:
+
+   ```
+   <stem> | <H1 title> | <type> | <tier> | <domain>
+   ```
+
+   Extract `type`/`tier`/`domain` from the YAML frontmatter; extract the H1
+   title from the first `#` heading; the stem is the filename without `.md`.
+   If a value is missing, write the literal string `(missing)`. Cache the
+   full text of this INDEX for reuse in steps 4, 6, and 8. If `02_wiki/` is
+   empty, the INDEX is the string `(empty)` — the pipeline still runs.
+3. **Agent 1**: run skill `kb-verifier` with the raw file content as input. Capture output.
+4. **Agent 2**: run skill `kb-structurer` with two labeled inputs:
+   `=== KB_INDEX ===` (from step 2), then `=== NOTE ===` (Agent 1's output).
+   Capture output.
+5. **Agent 3**: run skill `kb-visualizer` with Agent 2's output as input. Capture output.
+6. **Agent 4**: run skill `kb-critic` with two labeled inputs:
+   `=== KB_INDEX ===` (from step 2), then `=== NOTE ===` (Agent 3's output).
+7. **Write results**:
    - Split Agent 4's output on the line `=== BACKLOG ===`.
    - Everything ABOVE the marker → write to `02_wiki/<original-filename>.md` (overwrite if it exists).
    - Everything BELOW the marker (if present) → append under the `## Open` heading in `03_meta/backlog.md`.
-7. **Log the run**: append a run entry to `03_meta/logs/<YYYY-MM-DD>.md`
+8. **Agent 5 (hot-path placer)**: run skill `kb-curator` with two labeled
+   inputs: `=== KB_INDEX ===` (from step 2, includes the file just written),
+   then `=== NOTE ===` (the freshly written `02_wiki/<file>.md`). Split its
+   output on `=== BACKLOG ===` exactly like step 7:
+   - Document above the marker → overwrite `02_wiki/<file>.md`.
+   - Entries below → append under `## Open` in `03_meta/backlog.md`.
+
+   The hot-path Curator only edits the note under review (adds up to ~5
+   `[[links]]` to existing INDEX stems) and reports enrichment gaps. It does
+   NOT touch any other wiki file — inbound-mesh sweeps stay in the weekly
+   `kb-curate` playbook (section 9).
+9. **Log the run**: append a run entry to `03_meta/logs/<YYYY-MM-DD>.md`
    (create the folder/file if missing). Format in section 8 below.
-8. **Cleanup**: move the source file out of `01_unprocessed/` into
-   `03_meta/archive/` (do not delete — the originals are needed for
-   reprocessing, and archiving prevents the watcher from re-triggering).
+10. **Cleanup**: move the source file out of `01_unprocessed/` into
+    `03_meta/archive/` (do not delete — the originals are needed for
+    reprocessing, and archiving prevents the watcher from re-triggering).
 
 Success criteria to state in the playbook: `02_wiki/<file>.md` exists,
 starts with a `---` frontmatter block containing `type` and `tier` with
 allowed values (see Agent 2 definitions), is immediately followed by a `#` H1,
-contains `## Samenvatting`, contains at least one ` ```mermaid ` block, and
+contains `## Summary`, contains at least one ` ```mermaid ` block, contains
+a `## Composition` section when `tier` is `molecule` or `organism`, and
 `01_unprocessed/` no longer contains the source file.
+
+**Manual (Cursor) path.** When you run the pipeline by hand in Cursor
+without Claw, paste the INDEX (step 2) as the first block of the message to
+Agents 2, 4, and 5 — same labeled shape (`=== KB_INDEX ===` then
+`=== NOTE ===`). Skip it only when `02_wiki/` is truly empty.
 
 ## 6. Validate manually first
 
@@ -114,7 +167,7 @@ Per Claw's own rollout guidance:
 
 1. Drop ONE sample note into `01_unprocessed/`.
 2. Run the playbook manually from the playbook screen.
-3. Open the result in Obsidian and check: toggles collapse/expand, mermaid renders, links resolve, Dutch/English split is right.
+3. Open the result in Obsidian and check: toggles collapse/expand, mermaid renders, links resolve (no empty stub notes), prose is English.
 4. Repeat with 2-3 notes of different messiness. Use Auto Refine suggestions only when they improve determinism.
 
 ## 7. Task — folder watcher (automation)
@@ -131,18 +184,44 @@ Principle: **log metadata, never content**. Logs prove the system worked and
 show what ran — they must not duplicate note content (which may be sensitive)
 into yet another file.
 
-- One file per day: `03_meta/logs/2026-06-11.md`. Append-only; never edit old entries.
+- One file per day: `03_meta/logs/2026-06-11.md`. Append-only; never edit old
+  entries. The file opens with a tiny frontmatter health summary, kept up to
+  date by the playbook, so the daily totals are visible without opening every
+  run block:
+
+```yaml
+---
+date: 2026-06-11
+runs: 3
+success: 3
+failed: 0
+backlog_added: 5
+last_run: "14:32"
+---
+```
+
+  - First run of the day: create the file with this frontmatter, then the
+    first run block below it.
+  - Every later run that day: increment `runs`/`success`/`failed`/
+    `backlog_added`, update `last_run`, then append the new block below the
+    existing ones. Never edit older run blocks.
+
 - One short block per run, written by the playbook (step 7 above):
 
 ```markdown
 ## 14:32 — stock-sync-debounce.md
 - result: success
 - output: 02_wiki/stock-sync-debounce.md
-- agents: verifier ok (2 flags) | structurer ok | visualizer ok (2 diagrams) | critic repaired 1 defect
+- index_size: 24 notes
+- agents: verifier ok (2 flags) | structurer ok | visualizer ok (2 diagrams) | critic repaired 1 defect | curator ok (3 links added)
 - backlog: +2 entries
 - duration: ~4 min
 - source: archived
 ```
+
+`index_size` is the count of `.md` files scanned in step 2 (the KB_INDEX
+size). It doubles as a health metric: a run that suddenly sees 0 notes when
+the wiki is populated is a smoking gun.
 
 - On failure, the entry becomes verbose: `result: FAILED at visualizer`,
   what the symptom was, and what to do (e.g. "mermaid parse error — re-run
@@ -156,12 +235,29 @@ into yet another file.
 - Logs live in `03_meta/logs/`, which is gitignored — local only. Delete logs
   older than ~3 months whenever you notice them; nothing depends on them.
 
-## 9. Curator playbook (wiki gardening)
+### Seeing the system at work, visually
 
-The Curator turns a pile of documents into an interlinked wiki and surfaces
-missing knowledge. It is a SEPARATE playbook, `kb-curate`, that audits ONE
-wiki document per run. Don't run it until `02_wiki/` has at least
-a handful of documents — there is nothing to interlink before that.
+- **Live, right now:** Claw's own Activity tab shows every running/finished
+  playbook step in real time while a run is in progress — open it, no setup
+  needed, and no vault file to maintain.
+- **Trend over days:** `vault/_views/pipeline-runs.base` turns the frontmatter
+  block above into a sortable table — one row per day, most recent first.
+  Open `vault/_views/overview.md` in Obsidian (enable the Bases core plugin
+  if the table doesn't render) to see pipeline health at a glance without
+  reading a single log entry.
+
+## 9. Curator playbook (weekly wiki gardening)
+
+The Curator runs in TWO places:
+
+1. **Hot path (per note)** — section 5, step 8. Places the just-written
+   note in the graph. Only edits that one file. Runs automatically.
+2. **Weekly sweep (this playbook)** — audits an OLDER wiki document that the
+   hot-path Curator has not seen since new neighbors landed. This is where
+   inbound-mesh links get added and enrichment backlog gets worked off.
+
+Don't schedule the weekly sweep until `02_wiki/` has at least a handful of
+documents — there is nothing to interlink before that.
 
 Ordered steps:
 
@@ -294,9 +390,12 @@ Playbooks.
 
 | Task | Type | Trigger | Runs playbook | Touches inbox? |
 |---|---|---|---|---|
-| Ingest | Watcher | new `*.md` in `01_unprocessed/` | `kb-process-note` | yes (drains it) |
-| Wiki audit | Scheduled | weekly, e.g. Fri 16:00 | `kb-curate` | no |
+| Ingest | Watcher | new `*.md` in `01_unprocessed/` | `kb-process-note` (Agents 1-5) | yes (drains it) |
+| Wiki audit | Scheduled | weekly, e.g. Fri 16:00 | `kb-curate` (Agent 5 over older docs) | no |
 | Code check | Scheduled | weekly, e.g. Mon 09:00 | `kb-sentinel-check` | no |
+
+Agent 5 runs in the hot path (placer for the new note) AND in the weekly
+audit (inbound-mesh sweep across older notes). Same skill, two callers.
 
 Settings to get right:
 
@@ -318,7 +417,7 @@ Settings to get right:
 ```mermaid
 flowchart TD
     drop["File dropped in 01_unprocessed"] --> watcher["Watcher Task"]
-    watcher --> hot["kb-process-note - 4 agents"]
+    watcher --> hot["kb-process-note - 5 agents"]
     cronA["Weekly Fri 16:00"] --> curate["kb-curate"]
     cronB["Weekly Mon 09:00"] --> sentinel["kb-sentinel-check"]
     hot --> bot["Single bot, concurrency 1 - serial queue"]
