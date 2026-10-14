@@ -1,0 +1,18 @@
+{
+  "v": 4,
+  "createdOnFiles": {"v": 1, "at": "2026-10-14T12:00:00Z"},
+  "lists": "css",
+  "title": "RAGgamuffin for Nami",
+  "order": ["cover", "mess", "rag", "photocopier", "bigidea", "journey", "robot", "anchors", "counts", "local", "bakeoff", "oops", "roadmap", "honest", "turn"],
+  "sections": {
+    "s1": {"description": "What RAGgamuffin is, the messy-notes problem, what RAG means, and the old way that failed", "start": "cover"},
+    "s2": {"description": "The new idea: concept pages, one note's journey, what the robot decides, the verbatim anchor check, the real counts", "start": "bigidea"},
+    "s3": {"description": "Why it runs on one laptop, the model contest, and Hiren's own bugs", "start": "local"},
+    "s4": {"description": "The roadmap, an honest look at where it stands, and a game", "start": "roadmap"}
+  },
+  "faces": {
+    "fredoka": {"family": "Fredoka", "href": "https://fonts.googleapis.com/css2?family=Fredoka:wght@400..700&family=Nunito:wght@400;600;800&display=swap"},
+    "nunito": {"family": "Nunito", "href": "https://fonts.googleapis.com/css2?family=Fredoka:wght@400..700&family=Nunito:wght@400;600;800&display=swap"}
+  },
+  "designSystems": []
+}
