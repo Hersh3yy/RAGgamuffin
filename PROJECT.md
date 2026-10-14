@@ -5,6 +5,7 @@
   green light; the trunk is merged to only when sure.
   Keep the section order and headings identical across every project.
 -->
+<!-- clickup_list:1200240000009528 -->
 
 # RAGgamuffin — cockpit
 
@@ -158,32 +159,32 @@ and an edited source is picked up automatically.
 
 Proposed split: the first two are small and safe and can be done in one sitting once green-lit; the rest is the real work.
 
-- [x] Housekeeping: gitignore `vault/*.md`, delete `diff.txt`, note the trunk branch and agent numbering in README, commit the 20 July prompt edits so the tree is clean <!-- id:n1 -->
-- [ ] Local runtime, no cloud: Msty Claw can take a provider of type `ollama` (schema allows anthropic/openai/openrouter/ollama/mlx) pointed at the running Ollama on 11434, replacing the dead MLX provider; Msty Studio Split Chat with duplication mode for quick side-by-side looks; Claude Code on Ollama as fallback harness. Flip Msty llama.cpp to Metal, raise `Num ctx` to 32k. <!-- id:n7 -->
-- [ ] Decide the fate of the 5-agent relay and the Claw playbook: retire or keep as reference in `docs/legacy/` <!-- id:n2 -->
-- [x] Prototype the concept index on three sources (signings technical reference, SEPA mandate system, one GoCredible doc): extract concepts to JSON with definition, verbatim code anchors, source sections, related concepts; render to `vault/concepts/<slug>.md` with a script that appends when the concept exists. Judge in Obsidian before going wider. <!-- id:n3 -->
-- [x] Raise grounding: today only 4 of 13 concepts carry an anchor, because the model puts prose in the anchor field and the shape filter drops it. Better: after the model names a concept, find its anchors deterministically from the backticked identifiers in the chunk it came from, instead of asking the model for them <!-- id:n10 -->
-- [ ] Improve concept quality: stop section titles becoming concepts, make `kind` meaningful, dedupe near-identical concepts across sources. Prompt work plus a better model; run `bench.py` over the extraction task once the three missing models are downloaded <!-- id:n9 -->
-- [x] Make `~/Herd/documentation` the single source: pull it into the vault verbatim (copy or symlink) and drop `03_meta/archive/` and the paraphrased `02_wiki/` once the concept pages cover them <!-- id:n4 -->
-- [ ] Deterministic anchor check: a script that greps every cited path and class in the concept pages against `~/Herd/portal.mogelijk.nl` and flags misses as `#stale` backlog entries <!-- id:n5 -->
-- [ ] Run the extraction over all 30 docs with the chosen local model, rebuild the backlog from the graph (concepts cited by 2+ docs with no definition become `#write-doc`) <!-- id:n6 -->
+- [x] Housekeeping: gitignore `vault/*.md`, delete `diff.txt`, note the trunk branch and agent numbering in README, commit the 20 July prompt edits so the tree is clean <!-- id:n1 cu:123kjkdmpya -->
+- [ ] Local runtime, no cloud: Msty Claw can take a provider of type `ollama` (schema allows anthropic/openai/openrouter/ollama/mlx) pointed at the running Ollama on 11434, replacing the dead MLX provider; Msty Studio Split Chat with duplication mode for quick side-by-side looks; Claude Code on Ollama as fallback harness. Flip Msty llama.cpp to Metal, raise `Num ctx` to 32k. <!-- id:n7 cu:123kjkdmpyb -->
+- [ ] Decide the fate of the 5-agent relay and the Claw playbook: retire or keep as reference in `docs/legacy/` <!-- id:n2 cu:123kjkdmpyc -->
+- [x] Prototype the concept index on three sources (signings technical reference, SEPA mandate system, one GoCredible doc): extract concepts to JSON with definition, verbatim code anchors, source sections, related concepts; render to `vault/concepts/<slug>.md` with a script that appends when the concept exists. Judge in Obsidian before going wider. <!-- id:n3 cu:123kjkdmpyd -->
+- [x] Raise grounding: today only 4 of 13 concepts carry an anchor, because the model puts prose in the anchor field and the shape filter drops it. Better: after the model names a concept, find its anchors deterministically from the backticked identifiers in the chunk it came from, instead of asking the model for them <!-- id:n10 cu:123kjkdmpye -->
+- [ ] Improve concept quality: stop section titles becoming concepts, make `kind` meaningful, dedupe near-identical concepts across sources. Prompt work plus a better model; run `bench.py` over the extraction task once the three missing models are downloaded <!-- id:n9 cu:123kjkdmpyf -->
+- [x] Make `~/Herd/documentation` the single source: pull it into the vault verbatim (copy or symlink) and drop `03_meta/archive/` and the paraphrased `02_wiki/` once the concept pages cover them <!-- id:n4 cu:123kjkdmpyg -->
+- [ ] Deterministic anchor check: a script that greps every cited path and class in the concept pages against `~/Herd/portal.mogelijk.nl` and flags misses as `#stale` backlog entries <!-- id:n5 cu:123kjkdmpyh -->
+- [ ] Run the extraction over all 30 docs with the chosen local model, rebuild the backlog from the graph (concepts cited by 2+ docs with no definition become `#write-doc`) <!-- id:n6 cu:123kjkdmpyj -->
 
-- [ ] First live Thursday run with Hiren present: `/ingest-inbox` on whatever is in the inbox, then he reviews `03_meta/reviews/<date>.md` in Obsidian and rejects junk <!-- id:n11 -->
-- [ ] Flip `Hersh3yy/RAGgamuffin` to private BEFORE any push (`backlog.md` with portal internals has been public since 06-29) and pick a vault sync (private git repo recommended) <!-- id:n12 -->
-- [ ] Msty Studio as the mouth: follow `docs/msty-setup.md`; step 1 (Msty Remote at 11434) needs one click to verify <!-- id:n13 -->
-- [ ] Refresh the portal `.ua` graph incrementally (last build 2026-08-17) so anchor checks can use it instead of grep <!-- id:n14 -->
+- [ ] First live Thursday run with Hiren present: `/ingest-inbox` on whatever is in the inbox, then he reviews `03_meta/reviews/<date>.md` in Obsidian and rejects junk <!-- id:n11 cu:123kjkdmpyk -->
+- [ ] Flip `Hersh3yy/RAGgamuffin` to private BEFORE any push (`backlog.md` with portal internals has been public since 06-29) and pick a vault sync (private git repo recommended) <!-- id:n12 cu:123kjkdmpym -->
+- [ ] Msty Studio as the mouth: follow `docs/msty-setup.md`; step 1 (Msty Remote at 11434) needs one click to verify <!-- id:n13 cu:123kjkdmpyn -->
+- [ ] Refresh the portal `.ua` graph incrementally (last build 2026-08-17) so anchor checks can use it instead of grep <!-- id:n14 cu:123kjkdmpyp -->
 
 ## Roadmap — far future
 
-- [ ] Sentinel v2: on portal git diff, flag concept pages whose anchored files changed instead of prose-diffing the wiki <!-- id:f1 -->
-- [x] Model bake-off (the "compare over and over" feature): a script that runs one task over the same 3 source docs for N local models via Ollama (and optionally Msty's llama.cpp on 11454), writes outputs to `vault/_bench/<date>/<model>/`, records tok/s and deterministic scores (anchor retention, JSON/frontmatter validity, mermaid validity, phantom links, length ratio), and a `report.md` plus an Obsidian Base so Hiren can add a 1 to 5 human rating and rerun any time <!-- id:n8 -->
-- [ ] Model shortlist within a 12 GB budget (all Ollama, all tool-capable unless noted): `gemma4:12b`, `qwen3:14b`, `qwen3.5:9b`, `granite4.2:8b`, `phi4-mini` (3.8B), `phi4:14b` (9.1 GB, no tools, text only). Already on disk without download: `gemma-4-12B` community fine-tune GGUF (6.9 GB, Msty), `qwen3:4b`, `qwen2.5-coder:7b` (no tools). Too big for the budget: `Qwen3.6-35B-A3B` (21 GB, on disk), `gemma3:27b`, `qwen3-coder:30b`, `granite4.2:30b`, `gpt-oss:20b` (14 GB, borderline). Kimi K2.6 is 1T parameters, cloud-only on Ollama, not runnable on any laptop. Downloads need Hiren's go. <!-- id:f2 -->
-- [ ] Evaluate Magnitude (`npm i -g @magnitudedev/cli`, Rust on llama.cpp, profiles hardware, claims Claude Code integration via a background service). Unverified here; docs give no API or model details. <!-- id:f7 -->
-- [ ] Next-version skills over the portal codebase, local model plus codebase-memory / Serena graph: design-pattern usage map, improvement areas with effort estimate, learning plans per area for newcomers and seniors <!-- id:f8 -->
-- [ ] Consultant (agent 6) over the concept pages plus verbatim sources, via Msty Knowledge Stack or the filesystem MCP for Cursor described in the README <!-- id:f3 -->
-- [ ] Obsidian Bases views by concept type and by number of grounding sources (thin pages surface first) <!-- id:f4 -->
-- [ ] Decide where corrections live: fix the source doc in `~/Herd/documentation`, never the derived page <!-- id:f5 -->
-- [ ] Mirror this roadmap to ClickUp if Hiren wants it <!-- id:f6 -->
+- [ ] Sentinel v2: on portal git diff, flag concept pages whose anchored files changed instead of prose-diffing the wiki <!-- id:f1 cu:123kjkdmpyq -->
+- [x] Model bake-off (the "compare over and over" feature): a script that runs one task over the same 3 source docs for N local models via Ollama (and optionally Msty's llama.cpp on 11454), writes outputs to `vault/_bench/<date>/<model>/`, records tok/s and deterministic scores (anchor retention, JSON/frontmatter validity, mermaid validity, phantom links, length ratio), and a `report.md` plus an Obsidian Base so Hiren can add a 1 to 5 human rating and rerun any time <!-- id:n8 cu:123kjkdmpyr -->
+- [ ] Model shortlist within a 12 GB budget (all Ollama, all tool-capable unless noted): `gemma4:12b`, `qwen3:14b`, `qwen3.5:9b`, `granite4.2:8b`, `phi4-mini` (3.8B), `phi4:14b` (9.1 GB, no tools, text only). Already on disk without download: `gemma-4-12B` community fine-tune GGUF (6.9 GB, Msty), `qwen3:4b`, `qwen2.5-coder:7b` (no tools). Too big for the budget: `Qwen3.6-35B-A3B` (21 GB, on disk), `gemma3:27b`, `qwen3-coder:30b`, `granite4.2:30b`, `gpt-oss:20b` (14 GB, borderline). Kimi K2.6 is 1T parameters, cloud-only on Ollama, not runnable on any laptop. Downloads need Hiren's go. <!-- id:f2 cu:123kjkdmpyt -->
+- [ ] Evaluate Magnitude (`npm i -g @magnitudedev/cli`, Rust on llama.cpp, profiles hardware, claims Claude Code integration via a background service). Unverified here; docs give no API or model details. <!-- id:f7 cu:123kjkdmpyu -->
+- [ ] Next-version skills over the portal codebase, local model plus codebase-memory / Serena graph: design-pattern usage map, improvement areas with effort estimate, learning plans per area for newcomers and seniors <!-- id:f8 cu:123kjkdmpyv -->
+- [ ] Consultant (agent 6) over the concept pages plus verbatim sources, via Msty Knowledge Stack or the filesystem MCP for Cursor described in the README <!-- id:f3 cu:123kjkdmpyw -->
+- [ ] Obsidian Bases views by concept type and by number of grounding sources (thin pages surface first) <!-- id:f4 cu:123kjkdmpyx -->
+- [ ] Decide where corrections live: fix the source doc in `~/Herd/documentation`, never the derived page <!-- id:f5 cu:123kjkdmpyy -->
+- [ ] Mirror this roadmap to ClickUp if Hiren wants it <!-- id:f6 cu:123kjkdmpyz -->
 
 ---
 
