@@ -169,9 +169,10 @@ Proposed split: the first two are small and safe and can be done in one sitting 
 - [ ] Deterministic anchor check: a script that greps every cited path and class in the concept pages against `~/Herd/portal.mogelijk.nl` and flags misses as `#stale` backlog entries <!-- id:n5 cu:123kjkdmpyh -->
 - [ ] Run the extraction over all 30 docs with the chosen local model, rebuild the backlog from the graph (concepts cited by 2+ docs with no definition become `#write-doc`) <!-- id:n6 cu:123kjkdmpyj -->
 
-- [ ] First live Thursday run with Hiren present: `/ingest-inbox` on whatever is in the inbox, then he reviews `03_meta/reviews/<date>.md` in Obsidian and rejects junk <!-- id:n11 cu:123kjkdmpyk -->
+- [ ] First live Thursday run 2026-11-05 with Hiren present (12 seeded `ua-*` docs wait in the inbox; 4 already upserted as a rehearsal): `/ingest-inbox` on whatever is in the inbox, then he reviews `03_meta/reviews/<date>.md` in Obsidian and rejects junk <!-- id:n11 cu:123kjkdmpyk -->
 - [ ] Flip `Hersh3yy/RAGgamuffin` to private BEFORE any push (`backlog.md` with portal internals has been public since 06-29) and pick a vault sync (private git repo recommended) <!-- id:n12 cu:123kjkdmpym -->
 - [ ] Msty Studio as the mouth: follow `docs/msty-setup.md`; step 1 (Msty Remote at 11434) needs one click to verify <!-- id:n13 cu:123kjkdmpyn -->
+- [ ] `seed_from_ua.py` is the bridge from `/understand` to the vault (tour + domain graph -> inbox docs). Run it after every `/understand` refresh. `/understand-knowledge vault/concepts` needs Python 3.10+ (parser uses `set[str] | None`); default python3 is 3.9 <!-- id:n15 -->
 - [ ] Refresh the portal `.ua` graph incrementally (last build 2026-08-17) so anchor checks can use it instead of grep <!-- id:n14 cu:123kjkdmpyp -->
 
 ## Roadmap — far future
@@ -191,6 +192,13 @@ Proposed split: the first two are small and safe and can be done in one sitting 
 ## Diary
 
 <!-- Newest first. One entry per working session. Terse, factual, honest. Append only. -->
+
+### 2026-11-04 — bridge from /understand; first real pages; rehearsal for Thursday
+- State on arrival: pipeline untouched since 10-15, never run live; inbox empty; Hiren had run `/understand` on mogelijk-mbi (11-02) and finds the dashboard "better but less usable". Checked: the portal graph's 23k node summaries are boilerplate, but its `tour` (11 steps) and `domain-graph` (5 domains, 8 flows, 6 steps, signing only) are real teaching text.
+- Built `seed_from_ua.py`: deterministic, reads `<repo>/.ua/`, writes one inbox doc per tour step and per domain (with flows, steps, and the file paths the graph knows). 16 docs seeded for the portal.
+- Rehearsed the Thursday path by hand on 4 seeded docs: `unified-signing` built from two sources into ONE page with diagram and 12 located anchors; `config/signing.php` correctly flagged unlocated then `dead-anchor` by `validate.py` (the real file is `config/unified-signing.php`); `signing-strategy`, `indicative-quote-signing`, `p2p-onboarding-signing` created. index.md lists 4 concepts under `signings`.
+- `/understand-knowledge` parser crashes on Python 3.9 (`set[str] | None`); needs 3.10+.
+- 12 seeded docs left in the inbox on purpose for the live `/ingest-inbox` run with Hiren on 2026-11-05.
 
 ### 2026-10-15 — GO: upsert pipeline, validator, skill; branch `concept-index`
 - Hiren's requirements this session: living Jarvis-type system; human in the loop on cost; he drops LLM summaries into the inbox while working; Thursday night Claude Code processes them; local/cheap models for query; upsert semantics (second SEPA doc updates the one SEPA page, never duplicates); KB must occasionally validate itself against the code; visual-first pages because he learns visually; Msty Studio as the chat front; portable to the M5 Air and to other projects.
