@@ -172,7 +172,7 @@ Proposed split: the first two are small and safe and can be done in one sitting 
 - [ ] First live Thursday run 2026-11-05 with Hiren present (12 seeded `ua-*` docs wait in the inbox; 4 already upserted as a rehearsal): `/ingest-inbox` on whatever is in the inbox, then he reviews `03_meta/reviews/<date>.md` in Obsidian and rejects junk <!-- id:n11 cu:123kjkdmpyk -->
 - [ ] Flip `Hersh3yy/RAGgamuffin` to private BEFORE any push (`backlog.md` with portal internals has been public since 06-29) and pick a vault sync (private git repo recommended) <!-- id:n12 cu:123kjkdmpym -->
 - [ ] Msty Studio as the mouth: follow `docs/msty-setup.md`; step 1 (Msty Remote at 11434) needs one click to verify <!-- id:n13 cu:123kjkdmpyn -->
-- [ ] `seed_from_ua.py` is the bridge from `/understand` to the vault (tour + domain graph -> inbox docs). Run it after every `/understand` refresh. `/understand-knowledge vault/concepts` needs Python 3.10+ (parser uses `set[str] | None`); default python3 is 3.9 <!-- id:n15 -->
+- [ ] `seed_from_ua.py` is the bridge from `/understand` to the vault (tour + domain graph -> inbox docs). Run it after every `/understand` refresh. `/understand-knowledge vault/concepts` needs Python 3.10+ (parser uses `set[str] | None`); default python3 is 3.9 <!-- id:n15 cu:123kjkdpum3 -->
 - [ ] Refresh the portal `.ua` graph incrementally (last build 2026-08-17) so anchor checks can use it instead of grep <!-- id:n14 cu:123kjkdmpyp -->
 
 ## Roadmap — far future
